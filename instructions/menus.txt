@@ -1,0 +1,465 @@
+# LMS Dynamic Navigation Menu & Module Specification
+
+Document specification for `GET /api/v1/auth/my-menu` API and complete Frontend-Backend Menu Schema.
+
+---
+
+## 1. Overview & Architecture
+
+System mein 3 Core Layers hain:
+1. **User Role**: `ADMIN` | `TEACHER` | `STUDENT`
+2. **Module Permissions & Books Permissions**:
+   - `ADMIN` → Can assign Books & Modules to `TEACHER` or `STUDENT`.
+   - `TEACHER` → Can assign Books & Modules **ONLY** to their assigned `STUDENTS` (Condition: `Student Permissions ⊆ Teacher Permissions`).
+   - `STUDENT` → Receives granted subset of books & modules (No permission management menu).
+3. **Dynamic Menu API (`GET /api/v1/auth/my-menu`)**:
+   - Reads JWT Bearer Token.
+   - Identifies User ID & Role.
+   - Merges Role Defaults + Granted `user_module_permissions`.
+   - Returns exact allowed menu items for Next.js Sidebar rendering.
+
+---
+
+## 2. Complete Module Master Table (Database Reference)
+
+| Module Key | Module Name | Frontend Route | Icon Name | Allowed Roles | Default Visibility |
+|---|---|---|---|---|---|
+| `dashboard` | Dashboard | `/dashboard` | `LayoutDashboard` | All Roles | Always Visible |
+| `users` | Users Directory | `/dashboard/users` | `Users` | Admin | Visible |
+| `permissions` | Permissions | `/dashboard/users/permissions` | `ShieldCheck` | Admin, Teacher | Visible |
+| `books_permission` | Books Permission | `/dashboard/users/permissions/books` | `BookOpen` | Admin, Teacher | Sub-item |
+| `module_permission` | Module Permission | `/dashboard/users/permissions/modules` | `Layers` | Admin, Teacher | Sub-item |
+| `my_classes` | My Classes | `/dashboard/classes` | `Users` | Teacher | Visible |
+| `books` | Books | `/dashboard/books` | `BookOpen` | All Roles | Visible |
+| `chapters` | Chapters | `/dashboard/books/chapters` | `FileText` | All Roles | Sub-item |
+| `worksheets` | Worksheets | `/dashboard/books/worksheets` | `FileSpreadsheet` | All Roles | Sub-item |
+| `videos` | Videos | `/dashboard/books/videos` | `PlayCircle` | All Roles | Sub-item |
+| `teacher_manuals` | Teacher Manuals | `/dashboard/books/teacher-manual` | `BookMarked` | Admin, Teacher | Sub-item |
+| `lesson_planners` | Lesson Planners | `/dashboard/books/lesson-planner` | `Calendar` | Admin, Teacher | Sub-item |
+| `flipbooks` | Flipbooks | `/dashboard/books/flipbook` | `BookOpenCheck` | Admin, Teacher, Student | Sub-item |
+| `current_affairs` | Current Affairs | `/dashboard/books/current-affairs` | `Newspaper` | Admin, Teacher, Student | Sub-item |
+| `questions` | Questions | `/dashboard/questions` | `HelpCircle` | Admin, Teacher | Sub-item |
+| `question_types` | Question Types | `/dashboard/questions/types` | `ListFilter` | Admin, Teacher | Sub-item |
+| `import_questions` | Import Questions | `/dashboard/questions/import` | `Upload` | Admin | Sub-item |
+| `export_questions` | Export Questions | `/dashboard/questions/export` | `Download` | Admin | Sub-item |
+| `generate_qr` | Generate QR | `/dashboard/qrcode/generate` | `QrCode` | Admin | Sub-item |
+| `qr_list` | QR List | `/dashboard/qrcode` | `List` | Admin | Sub-item |
+| `bulk_qr` | Bulk QR Generator | `/dashboard/qrcode/bulk` | `Layers` | Admin | Sub-item |
+| `tests` | Tests / Exams | `/dashboard/tests` | `FileCheck` | Teacher, Student | Visible |
+| `assignments` | Assignments | `/dashboard/assignments` | `ClipboardList` | Teacher, Student | Visible |
+| `student_performance` | Student Performance | `/dashboard/performance` | `TrendingUp` | Teacher | Visible |
+| `results` | Results | `/dashboard/results` | `Award` | Student | Visible |
+| `my_progress` | My Progress | `/dashboard/progress` | `PieChart` | Student | Visible |
+| `user_reports` | User Reports | `/dashboard/reports/users` | `BarChart3` | Admin, Teacher | Sub-item |
+| `book_reports` | Book Reports | `/dashboard/reports/books` | `BarChart3` | Admin, Teacher | Sub-item |
+| `question_reports` | Question Reports | `/dashboard/reports/questions` | `BarChart3` | Admin, Teacher | Sub-item |
+| `general_settings` | General Settings | `/dashboard/settings` | `Settings` | Admin | Sub-item |
+| `audit_logs` | Audit Logs | `/dashboard/settings/audit-logs` | `ShieldAlert` | Admin | Sub-item |
+| `profile` | Profile | `/dashboard/profile` | `User` | All Roles | Visible |
+
+---
+
+## 3. Dynamic Menu API Specifications
+
+### `GET /api/v1/auth/my-menu`
+
+**Headers Required**:
+```http
+Authorization: Bearer <accessToken>
+```
+
+---
+
+### 3.1 Response JSON Payload — ADMIN Role
+
+```json
+{
+  "success": true,
+  "data": {
+    "role": "admin",
+    "portalTitle": "LMS Admin Panel",
+    "menus": [
+      {
+        "key": "dashboard",
+        "title": "Dashboard",
+        "route": "/dashboard",
+        "icon": "LayoutDashboard"
+      },
+      {
+        "key": "user_management",
+        "title": "User Management",
+        "icon": "Users",
+        "children": [
+          {
+            "key": "users",
+            "title": "Users",
+            "route": "/dashboard/users"
+          },
+          {
+            "key": "permissions",
+            "title": "Permissions",
+            "route": "/dashboard/users/permissions"
+          }
+        ]
+      },
+      {
+        "key": "book_management",
+        "title": "Book Management",
+        "icon": "BookOpen",
+        "children": [
+          {
+            "key": "books",
+            "title": "Books",
+            "route": "/dashboard/books"
+          },
+          {
+            "key": "chapters",
+            "title": "Chapters",
+            "route": "/dashboard/books/chapters"
+          },
+          {
+            "key": "worksheets",
+            "title": "Worksheets",
+            "route": "/dashboard/books/worksheets"
+          },
+          {
+            "key": "videos",
+            "title": "Videos",
+            "route": "/dashboard/books/videos"
+          },
+          {
+            "key": "teacher_manuals",
+            "title": "Teacher Manuals",
+            "route": "/dashboard/books/teacher-manual"
+          },
+          {
+            "key": "lesson_planners",
+            "title": "Lesson Planners",
+            "route": "/dashboard/books/lesson-planner"
+          },
+          {
+            "key": "flipbooks",
+            "title": "Flipbooks",
+            "route": "/dashboard/books/flipbook"
+          },
+          {
+            "key": "current_affairs",
+            "title": "Current Affairs",
+            "route": "/dashboard/books/current-affairs"
+          }
+        ]
+      },
+      {
+        "key": "question_bank",
+        "title": "Question Bank",
+        "icon": "HelpCircle",
+        "children": [
+          {
+            "key": "questions",
+            "title": "Questions",
+            "route": "/dashboard/questions"
+          },
+          {
+            "key": "question_types",
+            "title": "Question Types",
+            "route": "/dashboard/questions/types"
+          },
+          {
+            "key": "import_questions",
+            "title": "Import Questions",
+            "route": "/dashboard/questions/import"
+          },
+          {
+            "key": "export_questions",
+            "title": "Export Questions",
+            "route": "/dashboard/questions/export"
+          }
+        ]
+      },
+      {
+        "key": "qr_code_management",
+        "title": "QR Code Management",
+        "icon": "QrCode",
+        "children": [
+          {
+            "key": "generate_qr",
+            "title": "Generate QR",
+            "route": "/dashboard/qrcode/generate"
+          },
+          {
+            "key": "qr_list",
+            "title": "QR List",
+            "route": "/dashboard/qrcode"
+          },
+          {
+            "key": "bulk_qr",
+            "title": "Bulk QR Generator",
+            "route": "/dashboard/qrcode/bulk"
+          }
+        ]
+      },
+      {
+        "key": "reports",
+        "title": "Reports",
+        "icon": "BarChart3",
+        "children": [
+          {
+            "key": "user_reports",
+            "title": "User Reports",
+            "route": "/dashboard/reports/users"
+          },
+          {
+            "key": "book_reports",
+            "title": "Book Reports",
+            "route": "/dashboard/reports/books"
+          },
+          {
+            "key": "question_reports",
+            "title": "Question Reports",
+            "route": "/dashboard/reports/questions"
+          }
+        ]
+      },
+      {
+        "key": "settings",
+        "title": "Settings",
+        "icon": "Settings",
+        "children": [
+          {
+            "key": "general_settings",
+            "title": "General Settings",
+            "route": "/dashboard/settings"
+          },
+          {
+            "key": "audit_logs",
+            "title": "Audit Logs",
+            "route": "/dashboard/settings/audit-logs"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 3.2 Response JSON Payload — TEACHER Role
+
+*(Dynamically filtered based on Granted Module Permissions by Admin)*
+
+```json
+{
+  "success": true,
+  "data": {
+    "role": "teacher",
+    "portalTitle": "LMS Teacher Portal",
+    "menus": [
+      {
+        "key": "dashboard",
+        "title": "Dashboard",
+        "route": "/dashboard",
+        "icon": "LayoutDashboard"
+      },
+      {
+        "key": "my_classes",
+        "title": "My Classes",
+        "route": "/dashboard/classes",
+        "icon": "Users"
+      },
+      {
+        "key": "permissions",
+        "title": "Student Permissions",
+        "icon": "ShieldCheck",
+        "children": [
+          {
+            "key": "books_permission",
+            "title": "Books Permission",
+            "route": "/dashboard/permissions/books"
+          },
+          {
+            "key": "module_permission",
+            "title": "Module Permission",
+            "route": "/dashboard/permissions/modules"
+          }
+        ]
+      },
+      {
+        "key": "my_books",
+        "title": "My Books",
+        "icon": "BookOpen",
+        "children": [
+          {
+            "key": "books",
+            "title": "Books",
+            "route": "/dashboard/books"
+          },
+          {
+            "key": "chapters",
+            "title": "Chapters",
+            "route": "/dashboard/books/chapters"
+          },
+          {
+            "key": "worksheets",
+            "title": "Worksheets",
+            "route": "/dashboard/books/worksheets"
+          },
+          {
+            "key": "videos",
+            "title": "Videos",
+            "route": "/dashboard/books/videos"
+          },
+          {
+            "key": "teacher_manuals",
+            "title": "Teacher Manuals",
+            "route": "/dashboard/books/teacher-manual"
+          },
+          {
+            "key": "lesson_planners",
+            "title": "Lesson Planners",
+            "route": "/dashboard/books/lesson-planner"
+          }
+        ]
+      },
+      {
+        "key": "question_bank",
+        "title": "Question Bank",
+        "icon": "HelpCircle",
+        "children": [
+          {
+            "key": "questions",
+            "title": "Questions",
+            "route": "/dashboard/questions"
+          },
+          {
+            "key": "question_types",
+            "title": "Question Types",
+            "route": "/dashboard/questions/types"
+          }
+        ]
+      },
+      {
+        "key": "tests",
+        "title": "Tests / Exams",
+        "route": "/dashboard/tests",
+        "icon": "FileCheck"
+      },
+      {
+        "key": "assignments",
+        "title": "Assignments",
+        "route": "/dashboard/assignments",
+        "icon": "ClipboardList"
+      },
+      {
+        "key": "student_performance",
+        "title": "Student Performance",
+        "route": "/dashboard/performance",
+        "icon": "TrendingUp"
+      },
+      {
+        "key": "reports",
+        "title": "Reports",
+        "route": "/dashboard/reports",
+        "icon": "BarChart3"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 3.3 Response JSON Payload — STUDENT Role
+
+*(Dynamically filtered based on Granted Module Permissions by Teacher & Admin)*
+
+```json
+{
+  "success": true,
+  "data": {
+    "role": "student",
+    "portalTitle": "LMS Student Portal",
+    "menus": [
+      {
+        "key": "dashboard",
+        "title": "Dashboard",
+        "route": "/dashboard",
+        "icon": "LayoutDashboard"
+      },
+      {
+        "key": "my_books",
+        "title": "My Books",
+        "icon": "BookOpen",
+        "children": [
+          {
+            "key": "books",
+            "title": "Books",
+            "route": "/dashboard/books"
+          },
+          {
+            "key": "chapters",
+            "title": "Chapters",
+            "route": "/dashboard/books/chapters"
+          },
+          {
+            "key": "worksheets",
+            "title": "Worksheets",
+            "route": "/dashboard/books/worksheets"
+          },
+          {
+            "key": "videos",
+            "title": "Videos",
+            "route": "/dashboard/books/videos"
+          }
+        ]
+      },
+      {
+        "key": "tests",
+        "title": "Tests / Exams",
+        "route": "/dashboard/tests",
+        "icon": "FileCheck"
+      },
+      {
+        "key": "assignments",
+        "title": "Assignments",
+        "route": "/dashboard/assignments",
+        "icon": "ClipboardList"
+      },
+      {
+        "key": "results",
+        "title": "Results",
+        "route": "/dashboard/results",
+        "icon": "Award"
+      },
+      {
+        "key": "my_progress",
+        "title": "My Progress",
+        "route": "/dashboard/progress",
+        "icon": "PieChart"
+      },
+      {
+        "key": "profile",
+        "title": "Profile",
+        "route": "/dashboard/profile",
+        "icon": "User"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 4. Permission Logic Rules for Backend Enforcement
+
+1. **Hierarchy Rule**:
+   - `Student Granted Permissions ⊆ Teacher Granted Permissions ⊆ Admin Master Modules`
+   - Agar Teacher ke paas `Current Affairs` ya `Test Generator` permission nahi hai, to Teacher use Student ko grant nahi kar sakta.
+
+2. **Database Relationships**:
+   - `modules` (id, key, title, route, icon, role_access, sort_order)
+   - `user_module_permissions` (id, user_id, module_id, granted_by_user_id, is_granted)
+   - `user_book_permissions` (id, user_id, book_id, granted_by_user_id, is_granted)
+
+3. **Frontend Integration**:
+   - Frontend initial layout mount par `GET /api/v1/auth/my-menu` call karega aur direct response JSON parse karke sidebar dynamically generate karega.

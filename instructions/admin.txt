@@ -1,0 +1,96 @@
+1. Admin
+
+Admin ka kaam: LMS ka complete management aur control.
+
+Sidebar
+
+Dashboard
+
+User Management
+├── Users
+├── Roles
+└── Permissions
+
+Book Management
+├── Books
+├── Chapters
+├── Worksheets
+├── Videos
+├── Teacher Manuals
+├── Lesson Planners
+├── Flipbooks
+└── Current Affairs
+
+Question Bank
+├── Questions
+├── Question Types
+├── Import Questions
+└── Export Questions
+
+QR Code Management
+├── Generate QR
+├── QR List
+└── Bulk QR Generator
+
+Reports
+├── User Reports
+├── Book Reports
+└── Question Reports
+
+Settings
+├── General Settings
+└── Audit Logs
+
+
+Admin ke responsibilities
+
+Users
+
+Create teacher/student
+Edit users
+Delete users
+Activate/deactivate users
+Reset password
+Search/filter users
+Assign role
+
+Permissions
+
+Teacher ko accessible books assign karna
+Student ko accessible books assign karna
+Modules ki visibility control karna
+
+Books
+
+Create/edit/delete books
+Chapters manage karna
+Worksheets manage karna
+Videos add/manage karna
+Teacher Manuals
+Lesson Planners
+Flipbooks
+Current Affairs
+
+Questions
+
+Question types manage karna
+Questions manage karna
+Excel se import
+Excel/CSV/PDF export
+
+QR
+
+QR generate karna
+Bulk QR generate karna
+QR download karna
+
+Reports
+
+User activity
+Book access
+Question usage
+Audit logs
+
+Settings
+
+General LMS configuration

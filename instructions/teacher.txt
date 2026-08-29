@@ -1,0 +1,79 @@
+2. Teacher
+
+Teacher ka kaam: Assigned educational content use karke students ko teach/manage karna.
+
+Teacher ko Admin ke management features nahi milenge.
+
+Sidebar
+=================================
+Dashboard
+
+My Classes
+
+My Books
+├── Books
+├── Chapters
+├── Worksheets
+└── Videos
+
+Question Bank
+├── Questions
+└── Question Types
+
+Tests / Exams
+
+Assignments
+
+Student Performance
+
+Reports
+=================================
+
+Teacher ke responsibilities
+
+My Classes
+
+Apni assigned classes dekhna
+Students dekhna
+
+My Books
+
+Admin ne jo books assign ki hain unhe access karna
+Chapters dekhna
+Worksheets access karna
+Videos access karna
+Teacher Manual access karna
+Lesson Planner access karna
+
+Question Bank
+
+Available questions dekhna
+Questions search/filter karna
+Questions ko test/assignment me use karna
+
+Agar tum teacher ko question creation dena chahte ho, to:
+
+Question Bank
+├── Question List
+├── Create Question
+└── My Questions
+
+Tests
+
+Test create karna
+Questions select karna
+Marks set karna
+Test publish karna
+
+Assignments
+
+Assignment create karna
+Students/classes ko assign karna
+Submission dekhna
+
+Student Performance
+
+Student results
+Test performance
+Assignment performance
+Progress

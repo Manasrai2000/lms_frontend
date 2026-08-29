@@ -1,0 +1,195 @@
+LMS Admin Panel - Functional Requirements Document (FRD)
+Prepared for Development Team
+Version: 1.0
+Purpose: Define LMS Admin Panel features and requirements.
+1. User Management
+•	Manage LMS users and access control.
+•	Fields: User ID, Name, Email, Password, School Name, Mobile Number, Role, Created Date, Last Login Date, Status.
+•	Actions: Add, Edit, Delete, Reset Password, Activate/Deactivate, Search, Filter.
+2. Permission Management
+•	Book Permissions: Assign accessible books to users.
+•	Module Permissions: Control visibility of Dashboard, Books, Question Bank, Videos, Worksheets, Reports, etc.
+•	Support bulk assignment and permission updates.
+3. Question Type Management
+•	Create and manage question categories.
+•	Types: MCQ, True/False, Fill in the Blanks, Match the Following, Short Answer, Long Answer, Essay, Case Study, Practical, Project Work.
+•	Fields: Question Type Name, Default Marks, Description, Status.
+4. Book Management
+•	Manage Books, Chapters, Worksheets, Videos, Teacher Manuals, Lesson Planners, Flipbooks and Current Affairs.
+•	Support upload, view and download operations.
+5. Question Import / Export
+•	Export questions using Class, Subject, Book, Chapter and Question Type filters.
+•	Export formats: Excel, CSV, PDF.
+•	Import questions via Excel template with validation and duplicate detection.
+6. QR Code Generator
+•	Generate QR codes for Books, Chapters, Worksheets, Videos, Teacher Manuals and Flipbooks.
+•	Support PNG, SVG and print-ready downloads.
+•	Bulk QR generation supported.
+7. Reports & Audit Logs
+•	User Activity Reports, Book Access Reports, Question Usage Reports.
+•	Track user actions and system changes.
+8. Dashboard
+•	Display key statistics including Users, Books, Questions, Videos and Worksheets.
+•	Recent activity monitoring.
+9. Technology Stack
+Overview
+The LMS platform will be developed using modern web technologies to ensure scalability, maintainability, security, and high performance.
+________________________________________
+Primary Programming Language
+JavaScript Ecosystem
+The complete application will be built within the JavaScript ecosystem to simplify development, deployment, maintenance, and team collaboration.
+________________________________________
+Frontend Technology
+Framework
+Next.js
+Language
+TypeScript (Preferred)
+Reason for Using TypeScript
+•	Better code organization
+•	Strong type safety
+•	Reduced runtime errors
+•	Easier debugging
+•	Improved scalability for large projects
+•	Better developer experience and IntelliSense support
+Frontend Responsibilities
+•	User Interface (UI)
+•	Dashboard
+•	User Management Screens
+•	Book Management
+•	Question Bank Management
+•	Reports & Analytics
+•	QR Code Management
+•	Authentication Pages
+________________________________________
+Backend Technology
+Runtime Environment
+Node.js
+Framework
+Express.js
+Language
+TypeScript (Preferred)
+Reason for Using TypeScript
+•	Better code maintainability
+•	Structured project architecture
+•	Easier API development
+•	Improved code quality
+•	Better scalability for enterprise-level applications
+Backend Responsibilities
+•	Authentication & Authorization
+•	User Management APIs
+•	Permission Management APIs
+•	Question Bank APIs
+•	Book Management APIs
+•	File Upload APIs
+•	QR Code Generation APIs
+•	Report Generation APIs
+________________________________________
+Database
+Database Engine
+MySQL (SQL Database)
+Purpose
+•	User Data Storage
+•	Permissions Management
+•	Books & Chapters
+•	Questions & Question Types
+•	Reports
+•	Audit Logs
+•	QR Code Records
+________________________________________
+Server Environment
+Production Server
+•	Linux VPS Server
+Recommended Hosting
+•	Hostinger VPS (KVM 1 or Higher)
+Web Server
+•	Nginx
+Process Manager
+•	PM2
+SSL
+•	Let's Encrypt SSL
+________________________________________
+Video Management
+Video Hosting Platform
+YouTube (Unlisted Videos)
+Benefits
+•	No server storage consumption
+•	Fast global streaming
+•	Automatic video quality optimization
+•	Reduced server bandwidth usage
+•	Easy embedding within LMS
+Integration Method
+•	Store YouTube URL in database
+•	Display videos using embedded player
+________________________________________
+Additional Libraries & Tools
+Excel Import/Export
+•	ExcelJS
+QR Code Generation
+•	qrcode
+Authentication
+•	JWT (JSON Web Token)
+Password Security
+•	bcrypt
+File Upload
+•	Multer
+API Documentation
+•	Swagger/OpenAPI
+________________________________________
+Development Architecture
+Frontend (Next.js + TypeScript)
+↓
+REST APIs
+↓
+Backend (Node.js + Express + TypeScript)
+↓
+MySQL Database
+________________________________________
+Future Scalability
+The selected technology stack should support future modules such as:
+•	AI Question Generator
+•	Online Examination System
+•	Student Portal
+•	Teacher Portal
+•	Mobile Application
+•	Analytics Dashboard
+•	Learning Progress Tracking
+•	Notifications & Messaging
+
+Suggested LMS Menu Structure
+
+Dashboard
+
+User Management
+ - User List
+ - Roles
+ - Permissions
+
+Book Management
+ - Book List
+ - Chapters
+ - Worksheets
+ - Videos
+ - Teacher Manual
+ - Lesson Planner
+ - Flipbook
+ - Current Affairs
+
+Question Bank
+ - Question List
+ - Question Types
+ - Import Questions
+ - Export Questions
+
+QR Code Management
+ - Generate QR
+ - QR List
+ - Bulk QR Generator
+
+Reports
+ - User Reports
+ - Book Reports
+ - Question Reports
+
+Settings
+ - General Settings
+ - Audit Logs
