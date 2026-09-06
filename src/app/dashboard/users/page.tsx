@@ -4,11 +4,11 @@ import React, { useEffect, useState } from "react";
 import api from "@/lib/api";
 import axios from "axios";
 import { toast } from "sonner";
-import { 
-  Users, Shield, Search, 
+import {
+  Users, Shield, Search,
   ChevronRight, Calendar, Mail, Loader2, X, AlertCircle,
   UserPlus, Edit2, Trash2, KeyRound,
-  UserCheck, UserX, ChevronLeft
+  UserCheck, UserX, ChevronLeft, GraduationCap, RotateCcw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,18 @@ interface Subscription {
   updatedAt: string;
 }
 
+interface ClassEntity {
+  id: number;
+  name: string;
+  code?: string;
+}
+
+interface ClassOption {
+  id: number;
+  name: string;
+  code?: string;
+}
+
 interface AdminUser {
   id: number;
   fullName: string;
@@ -44,14 +56,27 @@ interface AdminUser {
   createdAt: string;
   deviceSessions: DeviceSession[];
   subscription: Subscription | null;
+  classId?: number | null;
+  className?: string | null;
+  classEntity?: ClassEntity | null;
 }
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Search and Debounce
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Filters State
   const [selectedRole, setSelectedRole] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedClassId, setSelectedClassId] = useState<string>("all");
+
+  // Classes master options
+  const [classesList, setClassesList] = useState<ClassOption[]>([]);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
 
   // Server-Side Pagination State
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -87,7 +112,8 @@ export default function UserManagementPage() {
     phoneNumber: "",
     companyName: "",
     password: "",
-    role: "teacher",
+    role: "student",
+    classId: "",
   });
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
 
@@ -96,14 +122,52 @@ export default function UserManagementPage() {
     email: "",
     phoneNumber: "",
     companyName: "",
-    role: "teacher",
+    role: "student",
+    classId: "",
   });
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
   const [newPasswordInput, setNewPasswordInput] = useState("");
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
 
-  // Fetch Users from Backend API with Server-Side Pagination
+  // Debounce search query changes (~400ms) and reset to page 1
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch Public Classes list on Mount
+  useEffect(() => {
+    async function fetchClasses() {
+      try {
+        setIsLoadingClasses(true);
+        let res: any;
+        try {
+          res = await api.get("/v1/classes", { params: { limit: 100 } });
+        } catch {
+          res = await api.get("/classes", { params: { limit: 100 } });
+        }
+        const raw = res.data?.data || (Array.isArray(res.data) ? res.data : []);
+        setClassesList(
+          raw.map((c: any) => ({
+            id: Number(c.id ?? c._id),
+            name: c.name || `Class ${c.id}`,
+            code: c.code,
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to load classes dropdown data:", err);
+      } finally {
+        setIsLoadingClasses(false);
+      }
+    }
+    fetchClasses();
+  }, []);
+
+  // Fetch Users from Backend API with Full Multi-Filter & Search Query Parameters
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
@@ -111,9 +175,12 @@ export default function UserManagementPage() {
         page: currentPage,
         limit: itemsPerPage,
       };
-      if (searchQuery.trim()) params.search = searchQuery.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (selectedRole !== "all") params.role = selectedRole;
       if (selectedStatus !== "all") params.status = selectedStatus;
+      if (selectedClassId !== "all" && selectedClassId !== "" && selectedRole !== "teacher" && selectedRole !== "admin") {
+        params.classId = selectedClassId;
+      }
 
       let response: any = null;
       try {
@@ -162,13 +229,29 @@ export default function UserManagementPage() {
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, itemsPerPage, selectedRole, selectedStatus]);
+  }, [currentPage, itemsPerPage, selectedRole, selectedStatus, selectedClassId, debouncedSearch]);
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       setCurrentPage(1);
       fetchUsers();
     }
+  };
+
+  // Check if any filter is active
+  const isAnyFilterActive =
+    searchQuery.trim() !== "" ||
+    selectedRole !== "all" ||
+    selectedStatus !== "all" ||
+    (selectedClassId !== "all" && selectedClassId !== "");
+
+  const handleClearFilters = () => {
+    setSearchQuery("");
+    setDebouncedSearch("");
+    setSelectedRole("all");
+    setSelectedStatus("all");
+    setSelectedClassId("all");
+    setCurrentPage(1);
   };
 
   // Stats calculation
@@ -196,15 +279,31 @@ export default function UserManagementPage() {
       toast.error("Full Name, Email, and Password are required!");
       return;
     }
+    if (createForm.role === "student" && !createForm.classId) {
+      toast.error("Please select a class for the student!");
+      return;
+    }
+
     setIsSubmittingCreate(true);
     try {
-      let createdUser: AdminUser;
+      const payload: any = {
+        fullName: createForm.fullName,
+        username: createForm.username,
+        email: createForm.email,
+        phoneNumber: createForm.phoneNumber,
+        companyName: createForm.companyName,
+        password: createForm.password,
+        role: createForm.role,
+      };
+
+      if (createForm.role === "student" && createForm.classId) {
+        payload.classId = Number(createForm.classId);
+      }
+
       try {
-        const response = await api.post("/admin/users", createForm);
-        createdUser = response.data.user || response.data;
+        await api.post("/admin/users", payload);
       } catch (err) {
-        const response = await api.post("/auth/register", createForm);
-        createdUser = response.data.user || response.data;
+        await api.post("/auth/register", payload);
       }
 
       toast.success(`New ${createForm.role.toUpperCase()} "${createForm.fullName}" created successfully!`);
@@ -216,7 +315,8 @@ export default function UserManagementPage() {
         phoneNumber: "",
         companyName: "",
         password: "",
-        role: "teacher",
+        role: "student",
+        classId: "",
       });
       fetchUsers();
     } catch (error: unknown) {
@@ -239,6 +339,7 @@ export default function UserManagementPage() {
       phoneNumber: user.phoneNumber || "",
       companyName: user.companyName || "",
       role: user.role.toLowerCase(),
+      classId: user.classId ? String(user.classId) : user.classEntity?.id ? String(user.classEntity.id) : "",
     });
   };
 
@@ -248,20 +349,38 @@ export default function UserManagementPage() {
     if (!editingUser) return;
     setIsSubmittingEdit(true);
 
-    try {
-      try {
-        await api.put(`/admin/users/${editingUser.id}`, editForm);
-      } catch (err) {
-        await api.patch(`/users/${editingUser.id}`, editForm);
-      }
-    } catch (err) {
-      // Fallback local update if backend edit route unavailable
+    const payload: any = {
+      fullName: editForm.fullName,
+      email: editForm.email,
+      phoneNumber: editForm.phoneNumber,
+      companyName: editForm.companyName,
+      role: editForm.role,
+    };
+
+    if (editForm.role === "student") {
+      payload.classId = editForm.classId ? Number(editForm.classId) : null;
     }
 
-    toast.success(`User "${editForm.fullName}" updated successfully!`);
-    setEditingUser(null);
-    setIsSubmittingEdit(false);
-    fetchUsers();
+    try {
+      try {
+        await api.patch(`/admin/users/${editingUser.id}`, payload);
+      } catch {
+        await api.put(`/admin/users/${editingUser.id}`, payload).catch(() =>
+          api.patch(`/users/${editingUser.id}`, payload)
+        );
+      }
+      toast.success(`User class and details updated successfully`);
+    } catch (err: unknown) {
+      let message = "Failed to update user profile";
+      if (axios.isAxiosError(err)) {
+        message = err.response?.data?.message || message;
+      }
+      toast.error(message);
+    } finally {
+      setEditingUser(null);
+      setIsSubmittingEdit(false);
+      fetchUsers();
+    }
   };
 
   // 3. Toggle Activate / Deactivate Status
@@ -318,6 +437,8 @@ export default function UserManagementPage() {
     fetchUsers();
   };
 
+  const isClassFilterDisabled = selectedRole === "teacher" || selectedRole === "admin";
+
   const startIndex = (meta.page - 1) * meta.limit + 1;
   const endIndex = Math.min(meta.page * meta.limit, meta.total);
 
@@ -332,7 +453,7 @@ export default function UserManagementPage() {
               User Directory & Access Control <Users className="h-6 w-6 text-[#004ac6]" />
             </h2>
             <p className="text-sm text-[#505f76] max-w-xl leading-relaxed">
-              Create teachers & students, edit user profiles, assign roles, manage active status, reset credentials, and monitor session activity.
+              Create teachers & students, edit user profiles, assign classes, manage active status, reset credentials, and monitor session activity.
             </p>
           </div>
 
@@ -391,42 +512,85 @@ export default function UserManagementPage() {
         </div>
       </div>
 
-      {/* Control Actions (Filters & Search) */}
-      <div className="bg-white rounded-xl border border-[#c3c6d7]/40 shadow-sm p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full md:max-w-sm">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-[#505f76]" />
+      {/* Control Actions Toolbar (Search & Multi-Filters) */}
+      <div className="bg-white rounded-xl border border-[#c3c6d7]/40 shadow-sm p-4 flex flex-col lg:flex-row gap-4 items-center justify-between">
+        {/* Search Input with Magnifying Glass & Clear button */}
+        <div className="relative w-full lg:max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#505f76]" />
           <Input
             type="text"
-            placeholder="Search users (Press Enter to search)..."
-            className="pl-9 bg-[#faf8ff] border-[#c3c6d7]/70 text-[#131b2e]"
+            placeholder="Search users by name, email, phone, class..."
+            className="pl-9 pr-8 bg-[#faf8ff] border-[#c3c6d7]/70 text-[#131b2e] text-xs h-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}
           />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setDebouncedSearch("");
+                setCurrentPage(1);
+              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 cursor-pointer"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
-        <div className="flex flex-wrap gap-4 w-full md:w-auto items-center justify-between md:justify-end">
-          <div className="flex items-center gap-2">
+        {/* Filter Dropdowns & Controls */}
+        <div className="flex flex-wrap gap-3 w-full lg:w-auto items-center justify-between lg:justify-end">
+          {/* Class Filter Dropdown */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-[#505f76] flex items-center gap-1">
+              <GraduationCap className="h-3.5 w-3.5 text-[#004ac6]" /> Class:
+            </span>
+            <select
+              disabled={isClassFilterDisabled}
+              value={isClassFilterDisabled ? "all" : selectedClassId}
+              onChange={(e) => {
+                setSelectedClassId(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-[#c3c6d7]/60 bg-white text-[#131b2e] ${isClassFilterDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                }`}
+            >
+              <option value="all">All Classes</option>
+              {classesList.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name} {cls.code ? `(${cls.code})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Role Filter */}
+          <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-[#505f76]">Role:</span>
             {["All", "Admin", "Teacher", "Student"].map((role) => (
               <button
                 key={role}
                 onClick={() => {
-                  setSelectedRole(role.toLowerCase());
+                  const r = role.toLowerCase();
+                  setSelectedRole(r);
+                  if (r === "teacher" || r === "admin") {
+                    setSelectedClassId("all");
+                  }
                   setCurrentPage(1);
                 }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer border ${
-                  selectedRole === role.toLowerCase()
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer border ${selectedRole === role.toLowerCase()
                     ? "bg-[#004ac6] border-[#004ac6] text-white shadow-sm"
                     : "bg-white border-[#c3c6d7]/60 text-[#505f76] hover:bg-[#eaedff]/40 hover:text-[#004ac6]"
-                }`}
+                  }`}
               >
                 {role}
               </button>
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Status Filter */}
+          <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-[#505f76]">Status:</span>
             {["All", "Active", "Inactive"].map((status) => (
               <button
@@ -435,16 +599,29 @@ export default function UserManagementPage() {
                   setSelectedStatus(status.toLowerCase());
                   setCurrentPage(1);
                 }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer border ${
-                  selectedStatus === status.toLowerCase()
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer border ${selectedStatus === status.toLowerCase()
                     ? "bg-slate-800 border-slate-800 text-white shadow-sm"
                     : "bg-white border-[#c3c6d7]/60 text-[#505f76] hover:bg-slate-100"
-                }`}
+                  }`}
               >
                 {status}
               </button>
             ))}
           </div>
+
+          {/* Clear Filters Button */}
+          {isAnyFilterActive && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 h-8 px-2.5 font-semibold flex items-center gap-1 cursor-pointer"
+              title="Reset all search & filter controls"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Clear Filters
+            </Button>
+          )}
         </div>
       </div>
 
@@ -468,6 +645,7 @@ export default function UserManagementPage() {
                 <tr className="bg-[#faf8ff] border-b border-[#c3c6d7]/35 text-xs font-semibold text-[#505f76] uppercase tracking-wider">
                   <th className="px-6 py-4">User Details</th>
                   <th className="px-6 py-4">System Role</th>
+                  <th className="px-6 py-4">Class / Grade</th>
                   <th className="px-6 py-4">Account Status</th>
                   <th className="px-6 py-4">Company / School</th>
                   <th className="px-6 py-4">Created Date</th>
@@ -477,6 +655,7 @@ export default function UserManagementPage() {
               <tbody className="divide-y divide-[#c3c6d7]/20 text-sm">
                 {users.map((user) => {
                   const isActive = user.isActive !== false;
+                  const classNameVal = user.className || user.classEntity?.name || (user.classId ? `Class ${user.classId}` : null);
                   return (
                     <tr key={user.id} className="hover:bg-[#faf8ff]/50 transition-colors">
                       <td className="px-6 py-4">
@@ -492,27 +671,37 @@ export default function UserManagementPage() {
                       </td>
 
                       <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase ${
-                          user.role?.toLowerCase() === "admin"
+                        <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase ${user.role?.toLowerCase() === "admin"
                             ? "bg-indigo-100 border border-indigo-200 text-indigo-700"
                             : user.role?.toLowerCase() === "teacher"
-                            ? "bg-emerald-100 border border-emerald-200 text-emerald-700"
-                            : user.role?.toLowerCase() === "student"
-                            ? "bg-sky-100 border border-sky-200 text-sky-700"
-                            : "bg-purple-100 border border-purple-200 text-purple-700"
-                        }`}>
+                              ? "bg-emerald-100 border border-emerald-200 text-emerald-700"
+                              : user.role?.toLowerCase() === "student"
+                                ? "bg-sky-100 border border-sky-200 text-sky-700"
+                                : "bg-purple-100 border border-purple-200 text-purple-700"
+                          }`}>
                           {user.role}
                         </span>
+                      </td>
+
+                      {/* Class / Grade Column */}
+                      <td className="px-6 py-4">
+                        {classNameVal ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#eaedff] text-[#004ac6] border border-[#004ac6]/20">
+                            <GraduationCap className="h-3.5 w-3.5" />
+                            {classNameVal}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-zinc-400 font-mono">—</span>
+                        )}
                       </td>
 
                       <td className="px-6 py-4">
                         <button
                           onClick={() => handleToggleStatus(user)}
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                            isActive
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${isActive
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
                               : "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
-                          }`}
+                            }`}
                         >
                           {isActive ? (
                             <>
@@ -741,12 +930,33 @@ export default function UserManagementPage() {
                     value={createForm.role}
                     onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
                   >
-                    <option value="teacher">Teacher</option>
                     <option value="student">Student</option>
+                    <option value="teacher">Teacher</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>
               </div>
+
+              {/* Conditional Class Assignment for Student Role */}
+              {createForm.role === "student" && (
+                <div className="space-y-1 animate-in fade-in duration-200">
+                  <label className="text-xs font-semibold text-[#131b2e] flex items-center gap-1">
+                    <GraduationCap className="h-3.5 w-3.5 text-[#004ac6]" /> Assign Class / Grade *
+                  </label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-[#c3c6d7]/70 bg-[#faf8ff] px-3 py-1 text-sm text-[#131b2e] cursor-pointer"
+                    value={createForm.classId}
+                    onChange={(e) => setCreateForm({ ...createForm, classId: e.target.value })}
+                  >
+                    <option value="">-- Choose Class --</option>
+                    {classesList.map((cls) => (
+                      <option key={cls.id} value={cls.id}>
+                        {cls.name} {cls.code ? `(${cls.code})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4 border-t border-[#c3c6d7]/20">
                 <Button
@@ -840,11 +1050,32 @@ export default function UserManagementPage() {
                   value={editForm.role}
                   onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                 >
-                  <option value="admin">Admin</option>
-                  <option value="teacher">Teacher</option>
                   <option value="student">Student</option>
+                  <option value="teacher">Teacher</option>
+                  <option value="admin">Admin</option>
                 </select>
               </div>
+
+              {/* Conditional Class Selector for Student Role */}
+              {editForm.role === "student" && (
+                <div className="space-y-1 animate-in fade-in duration-200">
+                  <label className="text-xs font-semibold text-[#131b2e] flex items-center gap-1">
+                    <GraduationCap className="h-3.5 w-3.5 text-[#004ac6]" /> Class / Grade
+                  </label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-[#c3c6d7]/70 bg-[#faf8ff] px-3 py-1 text-sm text-[#131b2e] cursor-pointer"
+                    value={editForm.classId}
+                    onChange={(e) => setEditForm({ ...editForm, classId: e.target.value })}
+                  >
+                    <option value="">-- Select Class --</option>
+                    {classesList.map((cls) => (
+                      <option key={cls.id} value={cls.id}>
+                        {cls.name} {cls.code ? `(${cls.code})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4 border-t border-[#c3c6d7]/20">
                 <Button
@@ -1007,13 +1238,18 @@ export default function UserManagementPage() {
                     <span className="text-xs text-[#505f76] flex items-center gap-1">
                       <Mail className="h-3.5 w-3.5 text-zinc-400" /> {selectedUser.email}
                     </span>
+                    {(selectedUser.className || selectedUser.classEntity || selectedUser.classId) && (
+                      <span className="inline-flex items-center gap-1 mt-1 text-xs font-bold text-[#004ac6] bg-[#eaedff] px-2 py-0.5 rounded">
+                        <GraduationCap className="h-3.5 w-3.5" />
+                        {selectedUser.className || selectedUser.classEntity?.name || `Class ${selectedUser.classId}`}
+                      </span>
+                    )}
                   </div>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                  selectedUser.role?.toLowerCase() === "admin"
+                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${selectedUser.role?.toLowerCase() === "admin"
                     ? "bg-indigo-100 text-indigo-700"
                     : "bg-emerald-100 text-emerald-700"
-                }`}>
+                  }`}>
                   {selectedUser.role}
                 </span>
               </div>
@@ -1028,11 +1264,10 @@ export default function UserManagementPage() {
                     {selectedUser.deviceSessions.map((session, index) => (
                       <div
                         key={index}
-                        className={`p-4 rounded-xl border transition-colors ${
-                          session.isActive 
+                        className={`p-4 rounded-xl border transition-colors ${session.isActive
                             ? "bg-emerald-50/40 border-emerald-300"
                             : "bg-[#faf8ff]/50 border-[#c3c6d7]/40"
-                        }`}
+                          }`}
                       >
                         <div className="flex justify-between items-start gap-4">
                           <div>
@@ -1052,11 +1287,10 @@ export default function UserManagementPage() {
                             </p>
                           </div>
 
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            session.isActive 
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${session.isActive
                               ? "bg-emerald-100 border border-emerald-300 text-emerald-700 animate-pulse"
                               : "bg-zinc-100 border border-zinc-300 text-zinc-600"
-                          }`}>
+                            }`}>
                             {session.isActive ? "ACTIVE" : "DISCONNECTED"}
                           </span>
                         </div>

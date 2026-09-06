@@ -365,9 +365,10 @@ export default function DashboardLayout({
       title: "QR Code Management",
       icon: QrCode,
       subItems: [
-        { title: "Generate QR", path: "/dashboard/qrcode/generate" },
         { title: "QR List", path: "/dashboard/qrcode" },
-        { title: "Bulk QR Generator", path: "/dashboard/qrcode/bulk" },
+        { title: "Map Existing QR", path: "/dashboard/qrcode/map" },
+        { title: "Generate QR", path: "/dashboard/qrcode/generate" },
+        { title: "Bulk Generate QR", path: "/dashboard/qrcode/bulk" },
       ],
     },
     {
@@ -383,8 +384,7 @@ export default function DashboardLayout({
       title: "Settings",
       icon: Settings,
       subItems: [
-        { title: "General Settings", path: "/dashboard/settings" },
-        { title: "Audit Logs", path: "/dashboard/settings/audit-logs" },
+        { title: "Profile", path: "/dashboard/profile" }
       ],
     },
   ];
@@ -539,36 +539,6 @@ export default function DashboardLayout({
             />
           ))}
         </nav>
-
-        {/* Footer info & Logout */}
-        <div className="p-4 border-t border-[#c3c6d7]/30 space-y-3 bg-[#faf8ff]/80">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-[#eaedff] border border-[#c3c6d7]/30 flex items-center justify-center text-[#004ac6] font-bold uppercase text-xs overflow-hidden relative">
-              {!sidebarImageError && user.profileImage ? (
-                <img
-                  src={getProfileImageUrl(user.profileImage)}
-                  alt={user.fullName}
-                  className="h-full w-full object-cover"
-                  onError={() => setSidebarImageError(true)}
-                />
-              ) : (
-                user.fullName.substring(0, 2)
-              )}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-semibold truncate text-[#131b2e]">{user.fullName}</p>
-              <p className="text-xs text-[#505f76] capitalize truncate">{user.role}</p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            onClick={handleLogout}
-            className="w-full text-[#505f76] hover:text-destructive hover:bg-destructive/10 justify-start gap-3 h-9 px-3 cursor-pointer"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </Button>
-        </div>
       </aside>
 
       {/* Main Workspace */}

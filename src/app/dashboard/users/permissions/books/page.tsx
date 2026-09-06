@@ -19,6 +19,7 @@ import {
   Lock,
   X,
   AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -36,16 +37,24 @@ interface UserOption {
   name?: string;
   email: string;
   role: string;
+  classId?: number | null;
+  className?: string | null;
+  classEntity?: { id: number; name: string; code?: string } | null;
 }
 
 interface BookItem {
   _id?: string | number;
   id?: string | number;
   title: string;
+  classId?: number | string;
   className?: string;
   class?: string;
+  subjectId?: number | string;
   subject?: string;
   subjectName?: string;
+  languageId?: number | string;
+  language?: string;
+  languageName?: string;
   coverImage?: string;
   code?: string;
 }
@@ -55,8 +64,17 @@ export default function BooksPermissionPage() {
   const [users, setUsers] = useState<UserOption[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const [userClassFilter, setUserClassFilter] = useState("all");
+
   const [bookSearchQuery, setBookSearchQuery] = useState("");
   const [selectedClassFilter, setSelectedClassFilter] = useState("all");
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState("all");
+  const [selectedLanguageFilter, setSelectedLanguageFilter] = useState("all");
+
+  const [classListOptions, setClassListOptions] = useState<{ id: number | string; name: string; code?: string }[]>([]);
+  const [subjectListOptions, setSubjectListOptions] = useState<{ id: number | string; name: string; code?: string }[]>([]);
+  const [languageListOptions, setLanguageListOptions] = useState<{ id: number | string; name: string; code?: string }[]>([]);
 
   const [allBooks, setAllBooks] = useState<BookItem[]>([]);
   const [teacherAllowedBookIds, setTeacherAllowedBookIds] = useState<Set<string>>(new Set());
@@ -70,15 +88,72 @@ export default function BooksPermissionPage() {
 
   const isTeacher = currentUser?.role?.toLowerCase() === "teacher";
 
-  // 1. Fetch Users List from GET /api/v1/admin/users?page=1&limit=50&search={query}
+  // Fetch Public Classes, Subjects & Languages Master Data on Mount
+  useEffect(() => {
+    async function fetchMasterFilters() {
+      try {
+        const [classRes, subRes, langRes] = await Promise.allSettled([
+          api.get("/v1/classes", { params: { limit: 100 } }).catch(() => api.get("/classes", { params: { limit: 100 } })),
+          api.get("/v1/subjects", { params: { limit: 100 } }).catch(() => api.get("/subjects", { params: { limit: 100 } })),
+          api.get("/v1/languages", { params: { limit: 100 } }).catch(() => api.get("/languages", { params: { limit: 100 } })),
+        ]);
+
+        if (classRes.status === "fulfilled" && classRes.value?.data) {
+          const raw = classRes.value.data?.data || (Array.isArray(classRes.value.data) ? classRes.value.data : []);
+          if (Array.isArray(raw) && raw.length > 0) {
+            setClassListOptions(
+              raw.map((c: any) => ({
+                id: c.id ?? c._id,
+                name: c.name || `Class ${c.id}`,
+                code: c.code,
+              }))
+            );
+          }
+        }
+
+        if (subRes.status === "fulfilled" && subRes.value?.data) {
+          const raw = subRes.value.data?.data || (Array.isArray(subRes.value.data) ? subRes.value.data : []);
+          if (Array.isArray(raw) && raw.length > 0) {
+            setSubjectListOptions(
+              raw.map((s: any) => ({
+                id: s.id ?? s._id,
+                name: s.name || `Subject ${s.id}`,
+                code: s.code,
+              }))
+            );
+          }
+        }
+
+        if (langRes.status === "fulfilled" && langRes.value?.data) {
+          const raw = langRes.value.data?.data || (Array.isArray(langRes.value.data) ? langRes.value.data : []);
+          if (Array.isArray(raw) && raw.length > 0) {
+            setLanguageListOptions(
+              raw.map((l: any) => ({
+                id: l.id ?? l._id,
+                name: l.name || `Language ${l.id}`,
+                code: l.code,
+              }))
+            );
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load master filter dropdown data:", err);
+      }
+    }
+    fetchMasterFilters();
+  }, []);
+
+  // 1. Fetch Users List from GET /api/v1/admin/users?page=1&limit=100
   const fetchUsers = async () => {
     try {
       setIsLoadingUsers(true);
       const params: Record<string, any> = {
         page: 1,
-        limit: 50,
+        limit: 100,
       };
       if (userSearchQuery.trim()) params.search = userSearchQuery.trim();
+      if (userRoleFilter !== "all") params.role = userRoleFilter;
+      if (userClassFilter !== "all") params.classId = userClassFilter;
 
       let res: any = null;
       try {
@@ -98,20 +173,44 @@ export default function BooksPermissionPage() {
         ? res
         : res?.data || res?.users || [];
 
-      // Filter target users and normalize name
-      const normalizedUsers: UserOption[] = userList
-        .map((u: any) => ({
-          id: u.id ?? u._id,
-          fullName: u.fullName || u.name || "User",
-          email: u.email || "",
-          role: u.role || "student",
-        }))
+      // Filter target users and normalize name/class
+      let normalizedUsers: UserOption[] = userList
+        .map((u: any) => {
+          const clsId = u.classId != null ? Number(u.classId) : (u.classEntity?.id ? Number(u.classEntity.id) : null);
+          const clsObj = classListOptions.find((c) => c.id === clsId);
+          const cName = u.classEntity?.name || clsObj?.name || u.className || null;
+          return {
+            id: u.id ?? u._id,
+            fullName: u.fullName || u.name || "User",
+            email: u.email || "",
+            role: u.role || "student",
+            classId: clsId,
+            className: cName,
+            classEntity: u.classEntity || (clsId ? { id: clsId, name: cName || `Class ${clsId}` } : null),
+          };
+        })
         .filter((u: UserOption) => getId(u) !== getId(currentUser));
+
+      // Extra client-side filter fallback if backend does not filter
+      if (userRoleFilter !== "all") {
+        normalizedUsers = normalizedUsers.filter(
+          (u) => u.role?.toLowerCase() === userRoleFilter.toLowerCase()
+        );
+      }
+      if (userClassFilter !== "all") {
+        normalizedUsers = normalizedUsers.filter(
+          (u) => String(u.classId) === String(userClassFilter) || (u.classEntity?.id && String(u.classEntity.id) === String(userClassFilter))
+        );
+      }
 
       setUsers(normalizedUsers);
 
-      if (normalizedUsers.length > 0 && !selectedUserId) {
-        setSelectedUserId(getId(normalizedUsers[0]));
+      if (normalizedUsers.length > 0) {
+        if (!selectedUserId || !normalizedUsers.some((u) => getId(u) === selectedUserId)) {
+          setSelectedUserId(getId(normalizedUsers[0]));
+        }
+      } else {
+        setSelectedUserId("");
       }
     } catch (err) {
       console.error("Failed to load users:", err);
@@ -121,7 +220,7 @@ export default function BooksPermissionPage() {
     }
   };
 
-  // 2. Fetch Catalog Books from GET /api/v1/books?page=1&limit=100&classId={classId}&search={search}
+  // 2. Fetch Catalog Books from GET /api/v1/books?page=1&limit=100&classId={classId}&subjectId={subjectId}&languageId={languageId}&search={search}
   const fetchCatalogBooks = async () => {
     try {
       setIsLoadingBooks(true);
@@ -130,6 +229,8 @@ export default function BooksPermissionPage() {
         limit: 100,
       };
       if (selectedClassFilter !== "all") params.classId = selectedClassFilter;
+      if (selectedSubjectFilter !== "all") params.subjectId = selectedSubjectFilter;
+      if (selectedLanguageFilter !== "all") params.languageId = selectedLanguageFilter;
       if (bookSearchQuery.trim()) params.search = bookSearchQuery.trim();
 
       let booksRes: any = null;
@@ -145,15 +246,49 @@ export default function BooksPermissionPage() {
         ? booksRes
         : booksRes?.data || booksRes?.books || [];
 
-      const normalized: BookItem[] = rawBooks.map((b: any, idx: number) => ({
-        id: b.id ?? b._id,
-        title: b.title || "Untitled Book",
-        class: b.class || b.className || "General",
-        className: b.className || b.class || "General",
-        subject: b.subject || b.subjectName || "General",
-        code: b.code || b.isbn || `BK-${b.id ?? idx + 1}`,
-        coverImage: b.coverImage || b.coverUrl,
-      }));
+      let normalized: BookItem[] = rawBooks.map((b: any, idx: number) => {
+        const clsId = b.classId ?? b.class?.id ?? b.classEntity?.id;
+        const clsName = b.className || b.class?.name || (typeof b.class === "string" ? b.class : null) || "General";
+
+        const subId = b.subjectId ?? b.subject?.id ?? b.subjectEntity?.id;
+        const subName = b.subjectName || b.subject?.name || (typeof b.subject === "string" ? b.subject : null) || "";
+
+        const langId = b.languageId ?? b.language?.id ?? b.languageEntity?.id;
+        const langName = b.languageName || b.language?.name || (typeof b.language === "string" ? b.language : null) || "";
+
+        return {
+          id: b.id ?? b._id,
+          title: b.title || "Untitled Book",
+          classId: clsId,
+          class: clsName,
+          className: clsName,
+          subjectId: subId,
+          subject: subName,
+          subjectName: subName,
+          languageId: langId,
+          language: langName,
+          languageName: langName,
+          code: b.code || b.isbn || `BK-${b.id ?? idx + 1}`,
+          coverImage: b.coverImage || b.coverUrl,
+        };
+      });
+
+      // Extra client-side filter fallback if backend does not filter
+      if (selectedClassFilter !== "all") {
+        normalized = normalized.filter(
+          (b) => String(b.classId) === String(selectedClassFilter) || String(b.className?.toLowerCase()) === String(selectedClassFilter.toLowerCase())
+        );
+      }
+      if (selectedSubjectFilter !== "all") {
+        normalized = normalized.filter(
+          (b) => String(b.subjectId) === String(selectedSubjectFilter) || String(b.subjectName?.toLowerCase()) === String(selectedSubjectFilter.toLowerCase())
+        );
+      }
+      if (selectedLanguageFilter !== "all") {
+        normalized = normalized.filter(
+          (b) => String(b.languageId) === String(selectedLanguageFilter) || String(b.languageName?.toLowerCase()) === String(selectedLanguageFilter.toLowerCase())
+        );
+      }
 
       setAllBooks(normalized);
     } catch (err) {
@@ -228,17 +363,26 @@ export default function BooksPermissionPage() {
 
   useEffect(() => {
     fetchUsers();
-  }, [userSearchQuery]);
+  }, [userSearchQuery, userRoleFilter, userClassFilter]);
 
   useEffect(() => {
     fetchCatalogBooks();
-  }, [selectedClassFilter, bookSearchQuery]);
+  }, [selectedClassFilter, selectedSubjectFilter, selectedLanguageFilter, bookSearchQuery]);
 
   useEffect(() => {
     if (selectedUserId) {
       fetchUserPermissions(selectedUserId);
+      const targetUser = users.find((u) => getId(u) === selectedUserId);
+      if (targetUser) {
+        const targetClassId = targetUser.classId ?? targetUser.classEntity?.id;
+        if (targetClassId) {
+          setSelectedClassFilter(String(targetClassId));
+        } else {
+          setSelectedClassFilter("all");
+        }
+      }
     }
-  }, [selectedUserId]);
+  }, [selectedUserId, users]);
 
   const selectedUser = users.find((u) => getId(u) === selectedUserId);
 
@@ -335,6 +479,30 @@ export default function BooksPermissionPage() {
     }
   };
 
+  const resetUserFilters = () => {
+    setUserSearchQuery("");
+    setUserRoleFilter("all");
+    setUserClassFilter("all");
+  };
+
+  const resetBookFilters = () => {
+    setBookSearchQuery("");
+    setSelectedClassFilter("all");
+    setSelectedSubjectFilter("all");
+    setSelectedLanguageFilter("all");
+  };
+
+  const isUserFilterActive =
+    userSearchQuery.trim() !== "" ||
+    userRoleFilter !== "all" ||
+    userClassFilter !== "all";
+
+  const isBookFilterActive =
+    bookSearchQuery.trim() !== "" ||
+    selectedClassFilter !== "all" ||
+    selectedSubjectFilter !== "all" ||
+    selectedLanguageFilter !== "all";
+
   const classesList = Array.from(
     new Set(allBooks.map((b) => b.className || b.class || "General"))
   ).sort();
@@ -410,9 +578,21 @@ export default function BooksPermissionPage() {
                 <Users className="h-4 w-4 text-[#004ac6]" />
                 Select Target User
               </h2>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#eaedff] text-[#004ac6]">
-                {users.length} Users
-              </span>
+              <div className="flex items-center gap-2">
+                {isUserFilterActive && (
+                  <button
+                    onClick={resetUserFilters}
+                    className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer transition-colors"
+                    title="Reset user filters"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Reset
+                  </button>
+                )}
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#eaedff] text-[#004ac6]">
+                  {users.length} Users
+                </span>
+              </div>
             </div>
 
             {/* User Search Input */}
@@ -420,11 +600,48 @@ export default function BooksPermissionPage() {
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
               <input
                 type="text"
-                placeholder="Search target user name or email..."
+                placeholder="Search user name or email..."
                 value={userSearchQuery}
                 onChange={(e) => setUserSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#c3c6d7]/60 focus:outline-none focus:border-[#004ac6] bg-[#faf8ff]"
               />
+            </div>
+
+            {/* User Filters: Role & Class */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-bold text-[#505f76] uppercase tracking-wider block mb-1">
+                  Role
+                </label>
+                <select
+                  value={userRoleFilter}
+                  onChange={(e) => setUserRoleFilter(e.target.value)}
+                  className="w-full px-2 py-1.5 text-xs rounded-xl border border-[#c3c6d7]/60 bg-[#faf8ff] text-[#131b2e] focus:outline-none focus:border-[#004ac6] font-semibold cursor-pointer"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="student">Student</option>
+                  <option value="teacher">Teacher</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-[#505f76] uppercase tracking-wider block mb-1">
+                  Class
+                </label>
+                <select
+                  value={userClassFilter}
+                  onChange={(e) => setUserClassFilter(e.target.value)}
+                  className="w-full px-2 py-1.5 text-xs rounded-xl border border-[#c3c6d7]/60 bg-[#faf8ff] text-[#131b2e] focus:outline-none focus:border-[#004ac6] font-semibold cursor-pointer"
+                >
+                  <option value="all">All Classes</option>
+                  {classListOptions.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Users List Container */}
@@ -459,6 +676,11 @@ export default function BooksPermissionPage() {
                         <p className={`text-[11px] truncate ${isSelected ? "text-white/80" : "text-[#505f76]"}`}>
                           {u.email}
                         </p>
+                        {u.className && (
+                          <p className={`text-[10px] font-semibold mt-0.5 ${isSelected ? "text-white/90" : "text-[#004ac6]"}`}>
+                            {u.className}
+                          </p>
+                        )}
                       </div>
                       <span
                         className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md shrink-0 ${
@@ -519,35 +741,88 @@ export default function BooksPermissionPage() {
               </div>
             </div>
 
-            {/* Books Filter Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-              <div className="sm:col-span-7 relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
-                <input
-                  type="text"
-                  placeholder="Filter books by title or subject..."
-                  value={bookSearchQuery}
-                  onChange={(e) => setBookSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#c3c6d7]/60 focus:outline-none focus:border-[#004ac6] bg-[#faf8ff]"
-                />
+            {/* Books Filter Controls: Search, Class (classId), Subject (subjectId), Language (languageId) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#505f76] flex items-center gap-1.5">
+                  <Filter className="h-3.5 w-3.5 text-[#004ac6]" /> Filter Books Catalog
+                </span>
+                {isBookFilterActive && (
+                  <button
+                    onClick={resetBookFilters}
+                    className="text-xs font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Reset Filters
+                  </button>
+                )}
               </div>
 
-              <div className="sm:col-span-5 relative">
-                <Filter className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                {/* Search Bar */}
+                <div className="sm:col-span-12 lg:col-span-4 relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+                  <input
+                    type="text"
+                    placeholder="Search title or code..."
+                    value={bookSearchQuery}
+                    onChange={(e) => setBookSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#c3c6d7]/60 focus:outline-none focus:border-[#004ac6] bg-[#faf8ff]"
+                  />
+                </div>
+
+              {/* Class Filter Dropdown (passes classId) */}
+              <div className="sm:col-span-4 lg:col-span-3 relative">
+                <Filter className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400 pointer-events-none" />
                 <select
                   value={selectedClassFilter}
                   onChange={(e) => setSelectedClassFilter(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#c3c6d7]/60 focus:outline-none focus:border-[#004ac6] bg-[#faf8ff] appearance-none cursor-pointer"
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#c3c6d7]/60 focus:outline-none focus:border-[#004ac6] bg-[#faf8ff] appearance-none cursor-pointer font-semibold text-[#131b2e]"
                 >
                   <option value="all">All Classes</option>
-                  {classesList.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                  {classListOptions.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Subject Filter Dropdown (passes subjectId) */}
+              <div className="sm:col-span-4 lg:col-span-3 relative">
+                <Filter className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400 pointer-events-none" />
+                <select
+                  value={selectedSubjectFilter}
+                  onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#c3c6d7]/60 focus:outline-none focus:border-[#004ac6] bg-[#faf8ff] appearance-none cursor-pointer font-semibold text-[#131b2e]"
+                >
+                  <option value="all">All Subjects</option>
+                  {subjectListOptions.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Language Filter Dropdown (passes languageId) */}
+              <div className="sm:col-span-4 lg:col-span-2 relative">
+                <Filter className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400 pointer-events-none" />
+                <select
+                  value={selectedLanguageFilter}
+                  onChange={(e) => setSelectedLanguageFilter(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#c3c6d7]/60 focus:outline-none focus:border-[#004ac6] bg-[#faf8ff] appearance-none cursor-pointer font-semibold text-[#131b2e]"
+                >
+                  <option value="all">All Languages</option>
+                  {languageListOptions.map((lang) => (
+                    <option key={lang.id} value={lang.id}>
+                      {lang.name}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
+          </div>
 
             {/* Books Grid */}
             {isLoadingBooks || isLoadingPermissions ? (
@@ -559,7 +834,7 @@ export default function BooksPermissionPage() {
               <div className="py-12 text-center bg-[#faf8ff] rounded-xl border border-dashed border-[#c3c6d7]">
                 <BookOpen className="h-8 w-8 mx-auto text-zinc-300 mb-2" />
                 <p className="text-sm font-bold text-[#131b2e]">No books found</p>
-                <p className="text-xs text-[#505f76]">Try adjusting your search or class filter.</p>
+                <p className="text-xs text-[#505f76]">Try adjusting your search, class, subject, or language filters.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
@@ -581,13 +856,20 @@ export default function BooksPermissionPage() {
                       }`}
                     >
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-[#004ac6]/10 text-[#004ac6]">
                             {book.className || book.class || "General"}
                           </span>
-                          <span className="text-[10px] font-semibold text-[#505f76]">
-                            {book.subject}
-                          </span>
+                          {book.subject && (
+                            <span className="text-[10px] font-semibold text-[#505f76]">
+                              {book.subject}
+                            </span>
+                          )}
+                          {book.language && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-600">
+                              {book.language}
+                            </span>
+                          )}
                         </div>
                         <h4 className="text-xs font-bold text-[#131b2e] leading-snug">{book.title}</h4>
                         {book.code && (

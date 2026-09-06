@@ -19,11 +19,23 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       refreshToken: null,
       isAuthenticated: false,
-      setAuth: (user, accessToken, refreshToken) =>
-        set({ user, accessToken, refreshToken, isAuthenticated: true }),
+      setAuth: (user, accessToken, refreshToken) => {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("accessToken", accessToken);
+          if (refreshToken) {
+            localStorage.setItem("refreshToken", refreshToken);
+          }
+        }
+        set({ user, accessToken, refreshToken, isAuthenticated: true });
+      },
       updateUser: (user) => set({ user }),
-      clearAuth: () =>
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false }),
+      clearAuth: () => {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
+        }
+        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+      },
     }),
     {
       name: "lms-auth-storage",

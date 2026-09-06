@@ -8,7 +8,6 @@ import {
   Users, BookOpen, HelpCircle, Video, FileSpreadsheet, 
   Sparkles, Clock, AlertCircle
 } from "lucide-react";
-import { toast } from "sonner";
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
@@ -64,7 +63,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -82,7 +81,7 @@ export default function DashboardPage() {
             </div>
           );
         })}
-      </div>
+      </div> */}
 
       {/* Detailed Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

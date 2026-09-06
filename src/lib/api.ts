@@ -11,20 +11,20 @@ export const api = axios.create({
   },
 });
 
-// Helper 1: Get Access Token (supports direct localStorage & Zustand Store)
+// Helper 1: Get Access Token (prioritizes active store, falls back to localStorage)
 export const getAccessToken = (): string | null => {
   if (typeof window === "undefined") return null;
-  const localToken = localStorage.getItem("accessToken");
-  if (localToken) return localToken;
-  return useAuthStore.getState().accessToken;
+  const storeToken = useAuthStore.getState().accessToken;
+  if (storeToken) return storeToken;
+  return localStorage.getItem("accessToken");
 };
 
-// Helper 2: Get Refresh Token (supports direct localStorage & Zustand Store)
+// Helper 2: Get Refresh Token (prioritizes active store, falls back to localStorage)
 export const getRefreshToken = (): string | null => {
   if (typeof window === "undefined") return null;
-  const localRefresh = localStorage.getItem("refreshToken");
-  if (localRefresh) return localRefresh;
-  return useAuthStore.getState().refreshToken;
+  const storeRefresh = useAuthStore.getState().refreshToken;
+  if (storeRefresh) return storeRefresh;
+  return localStorage.getItem("refreshToken");
 };
 
 // Helper 3: Save New Tokens to Storage & Store
@@ -40,6 +40,8 @@ export const saveNewTokens = (accessToken: string, refreshToken?: string, user?:
   const activeRefresh = refreshToken || store.refreshToken || "";
   if (currentUser) {
     store.setAuth(currentUser, accessToken, activeRefresh);
+  } else {
+    useAuthStore.setState({ accessToken, refreshToken: activeRefresh });
   }
 };
 

@@ -60,6 +60,9 @@ interface UserOption {
   name?: string;
   email: string;
   role: string;
+  classId?: number | null;
+  className?: string | null;
+  classEntity?: { id: number; name: string; code?: string } | null;
 }
 
 export interface ModuleDefinition {
@@ -105,8 +108,7 @@ export const MASTER_MODULE_KEYS = [
   "user_reports",
   "book_reports",
   "question_reports",
-  "general_settings",
-  "audit_logs",
+  "profile",
   "test_generator",
   "flip_book",
   "teacher_manual",
@@ -162,17 +164,10 @@ export const masterModules: ModuleDefinition[] = [
     category: "User & Access Control",
   },
   {
-    key: "general_settings",
-    name: "General Settings",
-    description: "Configure system branding, email servers, and platform defaults.",
-    icon: Settings,
-    category: "User & Access Control",
-  },
-  {
-    key: "audit_logs",
-    name: "Audit Logs",
-    description: "Track system access history, security logs, and activities.",
-    icon: History,
+    key: "profile",
+    name: "Profile",
+    description: "User Profile",
+    icon: User,
     category: "User & Access Control",
   },
 
@@ -430,6 +425,10 @@ export default function ModulePermissionPage() {
   const [users, setUsers] = useState<UserOption[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const [userClassFilter, setUserClassFilter] = useState("all");
+  const [classListOptions, setClassListOptions] = useState<{ id: number; name: string; code?: string }[]>([]);
+
   const [moduleSearchQuery, setModuleSearchQuery] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
 
@@ -443,15 +442,44 @@ export default function ModulePermissionPage() {
 
   const isTeacher = currentUser?.role?.toLowerCase() === "teacher";
 
+  // Fetch Public Classes List on Mount
+  useEffect(() => {
+    async function fetchClasses() {
+      try {
+        let res: any;
+        try {
+          res = await api.get("/v1/classes", { params: { limit: 100 } });
+        } catch {
+          res = await api.get("/classes", { params: { limit: 100 } });
+        }
+        const raw = res.data?.data || (Array.isArray(res.data) ? res.data : []);
+        if (Array.isArray(raw) && raw.length > 0) {
+          setClassListOptions(
+            raw.map((c: any) => ({
+              id: Number(c.id ?? c._id),
+              name: c.name || `Class ${c.id}`,
+              code: c.code,
+            }))
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load classes dropdown data:", err);
+      }
+    }
+    fetchClasses();
+  }, []);
+
   // 1. Fetch Users List from GET /api/v1/admin/users
   const fetchUsers = async () => {
     try {
       setIsLoadingUsers(true);
       const params: Record<string, any> = {
         page: 1,
-        limit: 50,
+        limit: 100,
       };
       if (userSearchQuery.trim()) params.search = userSearchQuery.trim();
+      if (userRoleFilter !== "all") params.role = userRoleFilter;
+      if (userClassFilter !== "all") params.classId = userClassFilter;
 
       let res: any = null;
       try {
@@ -468,19 +496,42 @@ export default function ModulePermissionPage() {
       }
 
       const userList = Array.isArray(res) ? res : res?.data || res?.users || [];
-      const normalizedUsers: UserOption[] = userList
-        .map((u: any) => ({
-          id: u.id ?? u._id,
-          fullName: u.fullName || u.name || "User",
-          email: u.email || "",
-          role: u.role || "student",
-        }))
+      let normalizedUsers: UserOption[] = userList
+        .map((u: any) => {
+          const clsId = u.classId != null ? Number(u.classId) : (u.classEntity?.id ? Number(u.classEntity.id) : null);
+          const clsObj = classListOptions.find((c) => c.id === clsId);
+          const cName = u.classEntity?.name || clsObj?.name || u.className || null;
+          return {
+            id: u.id ?? u._id,
+            fullName: u.fullName || u.name || "User",
+            email: u.email || "",
+            role: u.role || "student",
+            classId: clsId,
+            className: cName,
+            classEntity: u.classEntity || (clsId ? { id: clsId, name: cName || `Class ${clsId}` } : null),
+          };
+        })
         .filter((u: UserOption) => getId(u) !== getId(currentUser));
+
+      if (userRoleFilter !== "all") {
+        normalizedUsers = normalizedUsers.filter(
+          (u) => u.role?.toLowerCase() === userRoleFilter.toLowerCase()
+        );
+      }
+      if (userClassFilter !== "all") {
+        normalizedUsers = normalizedUsers.filter(
+          (u) => String(u.classId) === String(userClassFilter) || (u.classEntity?.id && String(u.classEntity.id) === String(userClassFilter))
+        );
+      }
 
       setUsers(normalizedUsers);
 
-      if (normalizedUsers.length > 0 && !selectedUserId) {
-        setSelectedUserId(getId(normalizedUsers[0]));
+      if (normalizedUsers.length > 0) {
+        if (!selectedUserId || !normalizedUsers.some((u) => getId(u) === selectedUserId)) {
+          setSelectedUserId(getId(normalizedUsers[0]));
+        }
+      } else {
+        setSelectedUserId("");
       }
     } catch (err) {
       console.error("Failed to load users:", err);
@@ -537,8 +588,8 @@ export default function ModulePermissionPage() {
           const tKeys = Array.isArray(tData)
             ? tData.map((item) => (typeof item === "string" ? item : item.moduleKey || item.key))
             : Array.isArray(tData?.moduleKeys)
-            ? tData.moduleKeys
-            : [];
+              ? tData.moduleKeys
+              : [];
           setTeacherAllowedModuleKeys(new Set(tKeys));
         } catch {
           // Allow all if endpoint is open
@@ -553,7 +604,7 @@ export default function ModulePermissionPage() {
 
   useEffect(() => {
     fetchUsers();
-  }, [userSearchQuery]);
+  }, [userSearchQuery, userRoleFilter, userClassFilter]);
 
   useEffect(() => {
     if (selectedUserId) {
@@ -712,11 +763,10 @@ export default function ModulePermissionPage() {
       {/* Alert Status Notification */}
       {statusMessage && (
         <div
-          className={`p-4 rounded-xl flex items-center justify-between gap-3 text-sm font-semibold border ${
-            statusMessage.type === "success"
+          className={`p-4 rounded-xl flex items-center justify-between gap-3 text-sm font-semibold border ${statusMessage.type === "success"
               ? "bg-emerald-50 text-emerald-800 border-emerald-200"
               : "bg-rose-50 text-rose-800 border-rose-200"
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2">
             {statusMessage.type === "success" ? (
@@ -759,6 +809,43 @@ export default function ModulePermissionPage() {
               />
             </div>
 
+            {/* User Filters: Role & Class */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-bold text-[#505f76] uppercase tracking-wider block mb-1">
+                  Role
+                </label>
+                <select
+                  value={userRoleFilter}
+                  onChange={(e) => setUserRoleFilter(e.target.value)}
+                  className="w-full px-2 py-1.5 text-xs rounded-xl border border-[#c3c6d7]/60 bg-[#faf8ff] text-[#131b2e] focus:outline-none focus:border-[#004ac6] font-semibold cursor-pointer"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="student">Student</option>
+                  <option value="teacher">Teacher</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-[#505f76] uppercase tracking-wider block mb-1">
+                  Class
+                </label>
+                <select
+                  value={userClassFilter}
+                  onChange={(e) => setUserClassFilter(e.target.value)}
+                  className="w-full px-2 py-1.5 text-xs rounded-xl border border-[#c3c6d7]/60 bg-[#faf8ff] text-[#131b2e] focus:outline-none focus:border-[#004ac6] font-semibold cursor-pointer"
+                >
+                  <option value="all">All Classes</option>
+                  {classListOptions.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* Users List */}
             <div className="space-y-2 max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
               {isLoadingUsers ? (
@@ -778,11 +865,10 @@ export default function ModulePermissionPage() {
                     <button
                       key={uId || idx}
                       onClick={() => setSelectedUserId(uId)}
-                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                        isSelected
+                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${isSelected
                           ? "bg-[#004ac6] text-white border-[#004ac6] shadow-sm shadow-[#004ac6]/15"
                           : "bg-white hover:bg-[#eaedff]/50 border-[#c3c6d7]/40 text-[#131b2e]"
-                      }`}
+                        }`}
                     >
                       <div className="overflow-hidden">
                         <p className={`text-xs font-bold truncate ${isSelected ? "text-white" : "text-[#131b2e]"}`}>
@@ -791,15 +877,19 @@ export default function ModulePermissionPage() {
                         <p className={`text-[11px] truncate ${isSelected ? "text-white/80" : "text-[#505f76]"}`}>
                           {u.email}
                         </p>
+                        {u.className && (
+                          <p className={`text-[10px] font-semibold mt-0.5 ${isSelected ? "text-white/90" : "text-[#004ac6]"}`}>
+                            {u.className}
+                          </p>
+                        )}
                       </div>
                       <span
-                        className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md shrink-0 ${
-                          isSelected
+                        className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md shrink-0 ${isSelected
                             ? "bg-white/20 text-white"
                             : u.role?.toLowerCase() === "teacher"
-                            ? "bg-purple-100 text-purple-700"
-                            : "bg-blue-100 text-blue-700"
-                        }`}
+                              ? "bg-purple-100 text-purple-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}
                       >
                         {u.role}
                       </span>
@@ -904,19 +994,17 @@ export default function ModulePermissionPage() {
                     <div
                       key={mod.key}
                       onClick={() => !isTeacherDisabled && toggleModuleAccess(mod.key)}
-                      className={`p-4 rounded-xl border transition-all flex items-start justify-between gap-3 ${
-                        isTeacherDisabled
+                      className={`p-4 rounded-xl border transition-all flex items-start justify-between gap-3 ${isTeacherDisabled
                           ? "bg-zinc-50 border-zinc-200 opacity-60 cursor-not-allowed"
                           : isGranted
-                          ? "bg-emerald-50/50 border-emerald-300 shadow-sm cursor-pointer hover:border-emerald-400"
-                          : "bg-white border-[#c3c6d7]/50 hover:bg-[#faf8ff] cursor-pointer"
-                      }`}
+                            ? "bg-emerald-50/50 border-emerald-300 shadow-sm cursor-pointer hover:border-emerald-400"
+                            : "bg-white border-[#c3c6d7]/50 hover:bg-[#faf8ff] cursor-pointer"
+                        }`}
                     >
                       <div className="flex items-start gap-3">
                         <div
-                          className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                            isGranted ? "bg-emerald-100 text-emerald-700" : "bg-[#faf8ff] text-[#505f76] border border-[#c3c6d7]/40"
-                          }`}
+                          className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isGranted ? "bg-emerald-100 text-emerald-700" : "bg-[#faf8ff] text-[#505f76] border border-[#c3c6d7]/40"
+                            }`}
                         >
                           <Icon className="h-4 w-4" />
                         </div>
@@ -947,14 +1035,12 @@ export default function ModulePermissionPage() {
                         ) : (
                           <button
                             type="button"
-                            className={`h-6 w-11 rounded-full transition-colors p-0.5 relative cursor-pointer ${
-                              isGranted ? "bg-emerald-500" : "bg-zinc-300"
-                            }`}
+                            className={`h-6 w-11 rounded-full transition-colors p-0.5 relative cursor-pointer ${isGranted ? "bg-emerald-500" : "bg-zinc-300"
+                              }`}
                           >
                             <span
-                              className={`block h-5 w-5 rounded-full bg-white shadow-md transform transition-transform ${
-                                isGranted ? "translate-x-5" : "translate-x-0"
-                              }`}
+                              className={`block h-5 w-5 rounded-full bg-white shadow-md transform transition-transform ${isGranted ? "translate-x-5" : "translate-x-0"
+                                }`}
                             />
                           </button>
                         )}
