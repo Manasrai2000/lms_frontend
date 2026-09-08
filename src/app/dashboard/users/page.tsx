@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/lib/store/auth";
 
 interface DeviceSession {
   deviceId: string;
@@ -62,6 +63,9 @@ interface AdminUser {
 }
 
 export default function UserManagementPage() {
+  const currentUser = useAuthStore((state) => state.user);
+  const isTeacher = currentUser?.role?.toLowerCase() === "teacher";
+
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -474,7 +478,9 @@ export default function UserManagementPage() {
             <Users className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs text-[#505f76] font-semibold">Total Users</p>
+            <p className="text-xs text-[#505f76] font-semibold">
+              {isTeacher ? "Total Students" : "Total Users"}
+            </p>
             <p className="text-2xl font-bold text-[#131b2e] tracking-tight">{totalUsers}</p>
           </div>
         </div>
@@ -484,9 +490,13 @@ export default function UserManagementPage() {
             <Shield className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs text-[#505f76] font-semibold">Admins / Teachers / Students</p>
+            <p className="text-xs text-[#505f76] font-semibold">
+              {isTeacher ? "Enrolled Students" : "Admins / Teachers / Students"}
+            </p>
             <p className="text-sm font-bold text-[#131b2e] tracking-tight">
-              {adminCount} Admin • {teacherCount} Teacher • {studentCount} Student
+              {isTeacher
+                ? `${studentCount} Student${studentCount === 1 ? "" : "s"}`
+                : `${adminCount} Admin • ${teacherCount} Teacher • ${studentCount} Student`}
             </p>
           </div>
         </div>
@@ -568,7 +578,7 @@ export default function UserManagementPage() {
           {/* Role Filter */}
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-[#505f76]">Role:</span>
-            {["All", "Admin", "Teacher", "Student"].map((role) => (
+            {(isTeacher ? ["Student"] : ["All", "Admin", "Teacher", "Student"]).map((role) => (
               <button
                 key={role}
                 onClick={() => {
@@ -926,13 +936,14 @@ export default function UserManagementPage() {
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-[#131b2e]">Assign Role *</label>
                   <select
-                    className="flex h-9 w-full rounded-md border border-[#c3c6d7]/70 bg-[#faf8ff] px-3 py-1 text-sm text-[#131b2e] cursor-pointer"
+                    className="flex h-9 w-full rounded-md border border-[#c3c6d7]/70 bg-[#faf8ff] px-3 py-1 text-sm text-[#131b2e] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     value={createForm.role}
                     onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
+                    disabled={isTeacher}
                   >
                     <option value="student">Student</option>
-                    <option value="teacher">Teacher</option>
-                    <option value="admin">Admin</option>
+                    {!isTeacher && <option value="teacher">Teacher</option>}
+                    {!isTeacher && <option value="admin">Admin</option>}
                   </select>
                 </div>
               </div>

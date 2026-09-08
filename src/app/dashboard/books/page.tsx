@@ -45,6 +45,15 @@ export interface Book {
   description?: string;
   createdAt?: string;
   updatedAt?: string;
+  worksheetUrl?: string;
+  worksheetDownloadUrl?: string;
+  worksheet?: any;
+  teacherManualUrl?: string;
+  teacherManualDownloadUrl?: string;
+  teacherManual?: any;
+  lessonPlannerUrl?: string;
+  lessonPlannerDownloadUrl?: string;
+  lessonPlanner?: any;
 }
 
 interface FilterOption {
@@ -171,6 +180,9 @@ export default function BookLibraryPage() {
       const params: Record<string, any> = {
         page: currentPage,
         limit: itemsPerPage,
+        worksheets: true,
+        teacher_manual: true,
+        lesson_planner: true,
       };
       if (selectedClassId !== "all") params.classId = selectedClassId;
       if (selectedSubjectId !== "all") params.subjectId = selectedSubjectId;
@@ -182,8 +194,13 @@ export default function BookLibraryPage() {
         const res = await api.get("/v1/books", { params });
         booksRes = res.data;
       } catch {
-        const res = await api.get("/api/v1/books", { params });
-        booksRes = res.data;
+        try {
+          const res = await api.get("/api/v1/books", { params });
+          booksRes = res.data;
+        } catch {
+          const res = await api.get("/books", { params });
+          booksRes = res.data;
+        }
       }
 
       const booksArray = Array.isArray(booksRes)
@@ -216,6 +233,15 @@ export default function BookLibraryPage() {
         languageId: b.languageId,
         coverImage: b.coverImage || b.cover_image || "",
         description: b.description || "",
+        worksheetUrl: b.worksheetUrl || b.worksheetPdfUrl || b.worksheet?.fileUrl,
+        worksheetDownloadUrl: b.worksheetDownloadUrl || b.worksheet?.downloadUrl,
+        worksheet: b.worksheet,
+        teacherManualUrl: b.teacherManualUrl || b.teacherManualPdfUrl || b.teacherManual?.fileUrl,
+        teacherManualDownloadUrl: b.teacherManualDownloadUrl || b.teacherManual?.downloadUrl,
+        teacherManual: b.teacherManual,
+        lessonPlannerUrl: b.lessonPlannerUrl || b.lessonPlannerPdfUrl || b.lessonPlanner?.fileUrl,
+        lessonPlannerDownloadUrl: b.lessonPlannerDownloadUrl || b.lessonPlanner?.downloadUrl,
+        lessonPlanner: b.lessonPlanner,
         createdAt: b.createdAt,
         updatedAt: b.updatedAt,
       }));

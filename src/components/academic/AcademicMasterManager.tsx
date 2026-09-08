@@ -27,6 +27,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/lib/store/auth";
 
 export interface AcademicItem {
   id: number | string;
@@ -68,6 +69,7 @@ interface AcademicMasterManagerProps {
   icon: React.ComponentType<{ className?: string }>;
   codePrefix: string;
   codePlaceholder: string;
+  hideCreateBtn?: boolean;
 }
 
 export default function AcademicMasterManager({
@@ -78,7 +80,12 @@ export default function AcademicMasterManager({
   icon: IconComponent,
   codePrefix,
   codePlaceholder,
+  hideCreateBtn,
 }: AcademicMasterManagerProps) {
+  const user = useAuthStore((state) => state.user);
+  const isTeacher = user?.role?.toLowerCase() === "teacher";
+  const shouldHideCreate = isTeacher || hideCreateBtn;
+
   // State management
   const [items, setItems] = useState<AcademicItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -509,13 +516,15 @@ export default function AcademicMasterManager({
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin text-[#004ac6]" : ""}`} />
               Refresh
             </Button>
-            <Button
-              onClick={handleOpenCreateModal}
-              className="bg-[#004ac6] hover:bg-[#003cb0] text-white font-semibold shadow-md shadow-[#004ac6]/20 cursor-pointer h-10 px-4"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add New {singularTitle}
-            </Button>
+            {!shouldHideCreate && (
+              <Button
+                onClick={handleOpenCreateModal}
+                className="bg-[#004ac6] hover:bg-[#003cb0] text-white font-semibold shadow-md shadow-[#004ac6]/20 cursor-pointer h-10 px-4"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add New {singularTitle}
+              </Button>
+            )}
           </div>
         </div>
 

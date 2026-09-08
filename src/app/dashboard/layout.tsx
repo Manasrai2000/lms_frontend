@@ -539,6 +539,20 @@ export default function DashboardLayout({
             />
           ))}
         </nav>
+
+        <div className="p-4 border-t border-[#c3c6d7]/30 bg-[#faf8ff]">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setIsMobileOpen(false);
+                  handleLogout();
+                }}
+                className="w-full text-[#505f76] hover:text-destructive justify-start gap-3 h-9 px-3"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </Button>
+            </div>
       </aside>
 
       {/* Main Workspace */}
