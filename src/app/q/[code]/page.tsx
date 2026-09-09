@@ -15,6 +15,10 @@ import {
   Loader2,
   ShieldCheck,
   GraduationCap,
+  Play,
+  Video,
+  Clock,
+  ExternalLink,
 } from "lucide-react";
 import qrApi from "@/lib/api/qrcode";
 import { QRVerifyResponse } from "@/types/qrcode";
@@ -102,8 +106,120 @@ export default function PublicQRScanPage({
               Please check your internet connection or rescan the QR sticker.
             </p>
           </div>
+        ) : verifyResult.valid && verifyResult.targetType === "VIDEO" && verifyResult.video ? (
+          /* STATE 1A: VALID & ACTIVE VIDEO SHOWCASE */
+          <div className="bg-white rounded-3xl border border-rose-200 shadow-xl overflow-hidden animate-in fade-in duration-200">
+            {/* Header Badge Banner */}
+            <div className="bg-gradient-to-r from-rose-600 to-rose-700 p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full bg-white/20 flex items-center justify-center">
+                  <Play className="h-3.5 w-3.5 fill-current" />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  Video Lesson Verified
+                </span>
+              </div>
+              <span className="font-mono text-xs font-bold bg-white/20 px-2 py-0.5 rounded text-white">
+                {code}
+              </span>
+            </div>
+
+            {/* Video Player Theater */}
+            <div className="relative w-full bg-black aspect-video flex items-center justify-center overflow-hidden shadow-inner">
+              {verifyResult.video.youtubeVideoId ||
+              verifyResult.video.videoUrl?.includes("youtube.com") ||
+              verifyResult.video.videoUrl?.includes("youtu.be") ? (
+                <iframe
+                  src={
+                    verifyResult.video.youtubeVideoId
+                      ? `https://www.youtube.com/embed/${verifyResult.video.youtubeVideoId}?autoplay=1&rel=0`
+                      : verifyResult.video.videoUrl.replace("watch?v=", "embed/") + "?autoplay=1&rel=0"
+                  }
+                  title={verifyResult.video.title}
+                  className="w-full h-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <video
+                  src={verifyResult.video.videoUrl}
+                  autoPlay
+                  controls
+                  className="w-full h-full object-contain"
+                >
+                  Your browser does not support HTML video.
+                </video>
+              )}
+            </div>
+
+            {/* Video Metadata Body */}
+            <div className="p-6 space-y-4">
+              <div>
+                <h1 className="text-lg font-bold text-[#131b2e] leading-snug">
+                  {verifyResult.video.title}
+                </h1>
+                {verifyResult.video.duration && (
+                  <p className="text-xs text-[#505f76] flex items-center gap-1.5 mt-1">
+                    <Clock className="h-3.5 w-3.5 text-zinc-400" />
+                    Duration: {verifyResult.video.duration}
+                  </p>
+                )}
+              </div>
+
+              {/* Book & Chapter Context */}
+              {(verifyResult.video.book || verifyResult.video.chapter) && (
+                <div className="p-3 bg-[#faf8ff] rounded-2xl border border-[#c3c6d7]/40 space-y-2 text-xs">
+                  {verifyResult.video.book && (
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-[#004ac6] shrink-0" />
+                      <span className="text-[#505f76]">
+                        Textbook: <b className="text-[#131b2e]">{verifyResult.video.book.title}</b>{" "}
+                        ({verifyResult.video.book.class} • {verifyResult.video.book.subject})
+                      </span>
+                    </div>
+                  )}
+
+                  {verifyResult.video.chapter && (
+                    <div className="flex items-center gap-2">
+                      <BookMarked className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span className="text-[#505f76]">
+                        Chapter: <b className="text-[#131b2e]">{verifyResult.video.chapter.title}</b>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {verifyResult.video.description && (
+                <p className="text-xs text-[#505f76] line-clamp-3">
+                  {verifyResult.video.description}
+                </p>
+              )}
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                {verifyResult.video.bookId && (
+                  <Link
+                    href={`/dashboard/books/chapters?bookId=${verifyResult.video.bookId}`}
+                    className="flex-1 flex items-center justify-center gap-2 p-3 bg-[#004ac6] hover:bg-[#003899] text-white rounded-xl transition-colors font-bold text-xs shadow-xs"
+                  >
+                    <BookMarked className="h-4 w-4" />
+                    <span>View Chapters & Resources</span>
+                  </Link>
+                )}
+
+                <Link
+                  href="/dashboard"
+                  className="flex items-center justify-center gap-2 p-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-xl transition-colors font-bold text-xs"
+                >
+                  <GraduationCap className="h-4 w-4" />
+                  <span>Student Dashboard</span>
+                </Link>
+              </div>
+            </div>
+          </div>
         ) : verifyResult.valid && verifyResult.book ? (
-          /* STATE 1: VALID & ACTIVE BOOK SHOWCASE */
+          /* STATE 1B: VALID & ACTIVE BOOK SHOWCASE */
           <div className="bg-white rounded-3xl border border-emerald-200/80 shadow-xl overflow-hidden animate-in fade-in duration-200">
             {/* Header Badge Banner */}
             <div className="bg-emerald-600 p-4 text-white flex items-center justify-between">
@@ -171,38 +287,109 @@ export default function PublicQRScanPage({
                 </div>
               </div>
 
-              {/* Action Buttons Links */}
-              <div className="space-y-2.5 pt-4 border-t border-[#c3c6d7]/20">
-                <p className="text-[11px] font-bold text-[#505f76] uppercase tracking-wider">
-                  Available Learning Materials
-                </p>
+              {/* Dynamic Action Buttons & Learning Materials */}
+              <div className="space-y-3 pt-4 border-t border-[#c3c6d7]/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold text-[#505f76] uppercase tracking-wider">
+                    Official Digital Learning Resources
+                  </p>
+                  {verifyResult.book.chaptersCount ? (
+                    <span className="text-[10px] font-bold bg-[#eaedff] text-[#004ac6] px-2 py-0.5 rounded-full">
+                      {verifyResult.book.chaptersCount} Chapters
+                    </span>
+                  ) : null}
+                </div>
 
-                <Link
-                  href={`/dashboard/books/chapters?bookId=${verifyResult.book.id}`}
-                  className="w-full flex items-center justify-between p-3.5 bg-[#004ac6] hover:bg-[#003899] text-white rounded-2xl transition-colors font-bold text-xs shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <BookMarked className="h-4.5 w-4.5" />
-                    <span>Open Chapters & Table of Contents</span>
-                  </div>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Link
-                    href={`/dashboard/books/flipbook`}
-                    className="flex items-center justify-center gap-2 p-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl transition-colors font-semibold text-xs"
+                {/* 1. Digital Flipbook (E-Book Reader) */}
+                {verifyResult.book.flipbooks && verifyResult.book.flipbooks.length > 0 ? (
+                  <a
+                    href={verifyResult.book.flipbooks[0].fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-between p-3.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-2xl transition-all font-bold text-xs shadow-sm group"
                   >
-                    <FileText className="h-4 w-4" />
-                    <span>View Flipbook</span>
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center">
+                        <BookOpen className="h-4.5 w-4.5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="leading-tight">Read Digital Flipbook (E-Book)</p>
+                        <p className="text-[10px] text-indigo-100 font-normal mt-0.5">
+                          {verifyResult.book.flipbooks[0].title || "Official flipbook reader"}
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 transform group-hover:translate-x-0.5 transition-transform" />
+                  </a>
+                ) : null}
+
+                {/* 2. Practice Worksheet PDF */}
+                {verifyResult.book.worksheet ? (
+                  <a
+                    href={verifyResult.book.worksheet.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-between p-3.5 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl transition-all font-bold text-xs shadow-sm group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center">
+                        <FileText className="h-4.5 w-4.5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="leading-tight">Download Practice Worksheet (PDF)</p>
+                        <p className="text-[10px] text-amber-100 font-normal mt-0.5">
+                          {verifyResult.book.worksheet.title}
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 transform group-hover:translate-x-0.5 transition-transform" />
+                  </a>
+                ) : null}
+
+                {/* 3. Video Lessons */}
+                {verifyResult.book.videos && verifyResult.book.videos.length > 0 ? (
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-[10px] font-bold text-[#505f76] uppercase tracking-wider">
+                      Chapter Video Lectures ({verifyResult.book.videos.length})
+                    </p>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                      {verifyResult.book.videos.map((vid, idx) => (
+                        <a
+                          key={vid.id || idx}
+                          href={vid.videoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-xl transition-colors text-xs font-semibold border border-rose-200"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="h-6 w-6 rounded bg-rose-200 text-rose-700 flex items-center justify-center text-[10px] font-bold shrink-0">
+                              #{idx + 1}
+                            </span>
+                            <span className="truncate">{vid.title}</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-rose-600 shrink-0 ml-2">Watch &rarr;</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* 4. Open Chapters & LMS Portal */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                  <Link
+                    href={`/dashboard/books/chapters?bookId=${verifyResult.book.id}`}
+                    className="flex items-center justify-center gap-2 p-3 bg-[#004ac6] hover:bg-[#003899] text-white rounded-xl transition-colors font-bold text-xs shadow-xs"
+                  >
+                    <BookMarked className="h-4 w-4" />
+                    <span>View Chapters</span>
                   </Link>
 
                   <Link
-                    href={`/dashboard/questions`}
-                    className="flex items-center justify-center gap-2 p-3 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl transition-colors font-semibold text-xs"
+                    href="/dashboard"
+                    className="flex items-center justify-center gap-2 p-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-xl transition-colors font-bold text-xs"
                   >
                     <GraduationCap className="h-4 w-4" />
-                    <span>Practice Questions</span>
+                    <span>Open in Dashboard</span>
                   </Link>
                 </div>
               </div>

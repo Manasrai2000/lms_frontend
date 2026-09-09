@@ -13,6 +13,11 @@ import {
   BookOpenCheck, Newspaper, ListFilter, Upload, Download, List, ShieldAlert
 } from "lucide-react";
 import Link from "next/link";
+import QRScannerModal from "@/components/dashboard/QRScannerModal";
+import BookResourceDrawer from "@/components/dashboard/BookResourceDrawer";
+import VideoPlayerModal from "@/components/dashboard/VideoPlayerModal";
+import { saveRecentlyScannedBook } from "@/lib/storage/recentQRs";
+import { QRCodeBook, QRCodeVideo } from "@/types/qrcode";
 
 const getProfileImageUrl = (path: string | null | undefined) => {
   if (!path) return "";
@@ -153,6 +158,12 @@ export default function DashboardLayout({
   const [sidebarImageError, setSidebarImageError] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
+
+  // Global QR Scanner & Resource Drawer States
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scannedBook, setScannedBook] = useState<QRCodeBook | null>(null);
+  const [activeVideo, setActiveVideo] = useState<QRCodeVideo | null>(null);
+  const [scannedCode, setScannedCode] = useState<string>("");
 
   // Dynamic Menu State from GET /auth/my-menu API
   const [dynamicMenu, setDynamicMenu] = useState<{
@@ -573,7 +584,17 @@ export default function DashboardLayout({
             </h1>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Quick QR Scanner Button in Header */}
+            <button
+              onClick={() => setIsScannerOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-[#004ac6]/10 hover:bg-[#004ac6] text-[#004ac6] hover:text-white rounded-xl text-xs font-bold transition-all border border-[#004ac6]/20 cursor-pointer shadow-2xs"
+              title="Scan Physical Book QR Code"
+            >
+              <QrCode className="h-4 w-4" />
+              <span className="hidden sm:inline">Scan Book QR</span>
+            </button>
+
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
@@ -685,6 +706,37 @@ export default function DashboardLayout({
           </aside>
         </div>
       )}
+
+      {/* Global QR Scanner Modal */}
+      <QRScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onVerified={(book, code) => {
+          saveRecentlyScannedBook(book, code);
+          setScannedBook(book);
+          setScannedCode(code);
+        }}
+        onVerifiedVideo={(video, code) => {
+          setActiveVideo(video);
+          setScannedCode(code);
+        }}
+      />
+
+      {/* Global Book Digital Resources Drawer */}
+      <BookResourceDrawer
+        isOpen={Boolean(scannedBook)}
+        onClose={() => setScannedBook(null)}
+        book={scannedBook}
+        scannedCode={scannedCode}
+      />
+
+      {/* Global Direct Video Auto-Player Modal */}
+      <VideoPlayerModal
+        isOpen={Boolean(activeVideo)}
+        onClose={() => setActiveVideo(null)}
+        video={activeVideo}
+        scannedCode={scannedCode}
+      />
     </div>
   );
 }

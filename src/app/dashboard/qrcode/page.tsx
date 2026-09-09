@@ -26,6 +26,7 @@ import {
   Filter,
   Layers,
   Sparkles,
+  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
@@ -56,6 +57,7 @@ export default function QRListPage() {
   });
 
   // Filter states
+  const [targetTypeFilter, setTargetTypeFilter] = useState<"ALL" | "BOOK" | "VIDEO">("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
@@ -97,6 +99,7 @@ export default function QRListPage() {
           limit: itemsPerPage,
         };
 
+        if (targetTypeFilter !== "ALL") params.targetType = targetTypeFilter;
         if (debouncedQuery.trim()) params.search = debouncedQuery.trim();
         if (typeFilter !== "ALL") params.type = typeFilter;
         if (statusFilter !== "ALL") params.status = statusFilter;
@@ -131,7 +134,7 @@ export default function QRListPage() {
         setIsRefreshing(false);
       }
     },
-    [currentPage, itemsPerPage, debouncedQuery, typeFilter, statusFilter]
+    [currentPage, itemsPerPage, debouncedQuery, typeFilter, statusFilter, targetTypeFilter]
   );
 
   useEffect(() => {
@@ -368,13 +371,61 @@ export default function QRListPage() {
         </div>
       </div>
 
+      {/* 2.5 Target Tab Switcher (All | Books | Videos) */}
+      <div className="flex items-center gap-2 border-b border-[#c3c6d7]/30 pb-2">
+        <button
+          onClick={() => {
+            setTargetTypeFilter("ALL");
+            setCurrentPage(1);
+          }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            targetTypeFilter === "ALL"
+              ? "bg-[#004ac6] text-white shadow-xs"
+              : "bg-white text-[#505f76] hover:bg-[#eaedff] hover:text-[#004ac6] border border-[#c3c6d7]/30"
+          }`}
+        >
+          <QrCode className="h-4 w-4" />
+          <span>All QR Codes</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setTargetTypeFilter("BOOK");
+            setCurrentPage(1);
+          }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            targetTypeFilter === "BOOK"
+              ? "bg-[#004ac6] text-white shadow-xs"
+              : "bg-white text-[#505f76] hover:bg-[#eaedff] hover:text-[#004ac6] border border-[#c3c6d7]/30"
+          }`}
+        >
+          <BookOpen className="h-4 w-4" />
+          <span>Book QRs</span>
+        </button>
+
+        <button
+          onClick={() => {
+            setTargetTypeFilter("VIDEO");
+            setCurrentPage(1);
+          }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+            targetTypeFilter === "VIDEO"
+              ? "bg-[#004ac6] text-white shadow-xs"
+              : "bg-white text-[#505f76] hover:bg-[#eaedff] hover:text-[#004ac6] border border-[#c3c6d7]/30"
+          }`}
+        >
+          <Video className="h-4 w-4" />
+          <span>Video QRs</span>
+        </button>
+      </div>
+
       {/* 3. Search & Filters Bar */}
       <div className="bg-white p-4 rounded-xl border border-[#c3c6d7]/30 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
           <input
             type="text"
-            placeholder="Search by QR code or book title..."
+            placeholder="Search by QR code or title..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-xs border border-[#c3c6d7]/60 rounded-lg focus:outline-none focus:border-[#004ac6] bg-[#faf8ff]"
@@ -461,7 +512,8 @@ export default function QRListPage() {
               <thead>
                 <tr className="bg-[#faf8ff] border-b border-[#c3c6d7]/30 text-[#505f76] font-semibold">
                   <th className="py-3 px-4">QR Code</th>
-                  <th className="py-3 px-4">Mapped Book</th>
+                  <th className="py-3 px-4">Target</th>
+                  <th className="py-3 px-4">Mapped Item</th>
                   <th className="py-3 px-4">Type</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4">Mapped Date</th>
@@ -471,6 +523,7 @@ export default function QRListPage() {
               <tbody className="divide-y divide-[#c3c6d7]/20 text-[#131b2e]">
                 {qrList.map((item) => {
                   const isCopied = copiedCode === item.code;
+                  const isVideo = item.targetType === "VIDEO" || Boolean(item.video) || Boolean(item.videoId);
                   return (
                     <tr key={item.id} className="hover:bg-[#eaedff]/30 transition-colors">
                       {/* Code */}
@@ -491,9 +544,40 @@ export default function QRListPage() {
                         </div>
                       </td>
 
-                      {/* Mapped Book */}
+                      {/* Target Type Badge */}
                       <td className="py-3.5 px-4">
-                        {item.book ? (
+                        {isVideo ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                            <Video className="h-3 w-3" />
+                            Video
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#004ac6] bg-[#eaedff] px-2 py-0.5 rounded-full border border-[#004ac6]/20">
+                            <BookOpen className="h-3 w-3" />
+                            Book
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Mapped Item */}
+                      <td className="py-3.5 px-4">
+                        {isVideo && item.video ? (
+                          <div>
+                            <p className="font-bold text-[#131b2e] leading-snug">{item.video.title}</p>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                              {item.video.chapter?.title && (
+                                <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-semibold border border-emerald-200">
+                                  Ch: {item.video.chapter.title}
+                                </span>
+                              )}
+                              {item.video.book?.title && (
+                                <span className="text-[10px] bg-zinc-100 text-zinc-600 px-1.5 py-0.5 rounded font-semibold truncate max-w-[160px]">
+                                  {item.video.book.title}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ) : item.book ? (
                           <div>
                             <p className="font-bold text-[#131b2e] leading-snug">{item.book.title}</p>
                             <div className="flex items-center gap-2 mt-0.5">

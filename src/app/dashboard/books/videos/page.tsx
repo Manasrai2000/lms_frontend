@@ -26,9 +26,17 @@ import {
   ArrowDown,
   CheckCircle2,
   ExternalLink,
+  QrCode,
+  Download,
+  Printer,
+  Copy,
+  Check,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/store/auth";
+import qrApi from "@/lib/api/qrcode";
+import { QRCodeItem } from "@/types/qrcode";
 
 export interface BookOption {
   id: number | string;
@@ -126,6 +134,12 @@ export default function VideosPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState<boolean>(false);
   const [videoToDelete, setVideoToDelete] = useState<VideoItem | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  // Video QR Code Modal State
+  const [videoQrMap, setVideoQrMap] = useState<Record<string, QRCodeItem>>({});
+  const [selectedVideoQr, setSelectedVideoQr] = useState<{ video: VideoItem; qr: QRCodeItem | null } | null>(null);
+  const [isGeneratingQr, setIsGeneratingQr] = useState<boolean>(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -314,8 +328,27 @@ export default function VideosPage() {
     }
   };
 
+  // 3.1 Fetch Video QR Codes mapping
+  const fetchVideoQrs = async () => {
+    try {
+      const res = await qrApi.getList({ targetType: "VIDEO", limit: 500 });
+      const items = res.data || [];
+      const map: Record<string, QRCodeItem> = {};
+      items.forEach((item) => {
+        const vId = item.videoId || (item.video ? (item.video.id || (item.video as any)._id) : null);
+        if (vId) {
+          map[String(vId)] = item;
+        }
+      });
+      setVideoQrMap(map);
+    } catch (err) {
+      console.error("Failed to fetch video QR codes mapping:", err);
+    }
+  };
+
   useEffect(() => {
     fetchBooksOptions();
+    fetchVideoQrs();
   }, []);
 
   useEffect(() => {
@@ -330,6 +363,85 @@ export default function VideosPage() {
   useEffect(() => {
     fetchVideos();
   }, [selectedBookId, selectedChapterId, currentPage, itemsPerPage]);
+
+  // Video QR Code Handlers
+  const handleOpenVideoQrModal = (v: VideoItem) => {
+    const vId = String(getVideoIdStr(v));
+    const existingQr = videoQrMap[vId] || null;
+    setSelectedVideoQr({ video: v, qr: existingQr });
+  };
+
+  const handleGenerateVideoQr = async (v: VideoItem) => {
+    const vId = String(getVideoIdStr(v));
+    try {
+      setIsGeneratingQr(true);
+      const newQr = await qrApi.generateForVideo(vId);
+      toast.success(`Video QR Code (${newQr.code}) generated successfully!`);
+      setVideoQrMap((prev) => ({ ...prev, [vId]: newQr }));
+      setSelectedVideoQr({ video: v, qr: newQr });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to generate video QR code");
+    } finally {
+      setIsGeneratingQr(false);
+    }
+  };
+
+  const handleCopyUrl = (code: string) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const publicUrl = `${origin}/q/${code}`;
+    navigator.clipboard.writeText(publicUrl);
+    setCopiedCode(code);
+    toast.success("Video QR Link copied to clipboard!");
+    setTimeout(() => setCopiedCode(null), 2500);
+  };
+
+  const handlePrintVideoLabel = (item: QRCodeItem, video: VideoItem) => {
+    const imageUrl = qrApi.getImageUrl(item.id, "png");
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Please allow popups to print QR label");
+      return;
+    }
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const publicUrl = `${origin}/q/${item.code}`;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Print Video QR Label - ${item.code}</title>
+          <style>
+            body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #fff; }
+            .label { border: 2px dashed #004ac6; padding: 24px; text-align: center; border-radius: 12px; max-width: 320px; }
+            .badge { display: inline-block; font-size: 10px; font-weight: 800; background: #eaedff; color: #004ac6; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; margin-bottom: 8px; }
+            .img-box { margin: 14px 0; }
+            .img-box img { width: 170px; height: 170px; }
+            .title { font-weight: bold; font-size: 15px; margin-bottom: 4px; color: #131b2e; }
+            .sub { font-size: 11px; color: #505f76; margin-bottom: 12px; }
+            .code { font-family: monospace; font-size: 13px; font-weight: bold; background: #eaedff; padding: 4px 8px; border-radius: 4px; color: #004ac6; }
+            .url { font-size: 9px; color: #888; margin-top: 8px; word-break: break-all; }
+          </style>
+        </head>
+        <body>
+          <div class="label">
+            <div class="badge">🎥 Video Lesson QR</div>
+            <div class="title">${video.title}</div>
+            <div class="sub">${video.bookTitle ? `Book: ${video.bookTitle}` : ""} ${video.chapterTitle ? `| Ch: ${video.chapterTitle}` : ""}</div>
+            <div class="img-box">
+              <img src="${imageUrl}" alt="Video QR Code" />
+            </div>
+            <div class="code">${item.code}</div>
+            <div class="url">${publicUrl}</div>
+          </div>
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const selectedBookObj = useMemo(() => {
     return books.find((b) => String(b.id) === String(selectedBookId));
@@ -861,6 +973,23 @@ export default function VideosPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => handleOpenVideoQrModal(v)}
+                        className={`h-8 w-8 p-0 rounded-lg cursor-pointer ${
+                          videoQrMap[String(getVideoIdStr(v))]
+                            ? "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                            : "text-slate-400 hover:text-[#004ac6] hover:bg-slate-100"
+                        }`}
+                        title={
+                          videoQrMap[String(getVideoIdStr(v))]
+                            ? `Video QR Code (${videoQrMap[String(getVideoIdStr(v))].code})`
+                            : "Generate / View Video QR Code"
+                        }
+                      >
+                        <QrCode className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleOpenEditModal(v)}
                         className="h-8 w-8 p-0 text-slate-600 hover:text-[#004ac6] hover:bg-slate-100 rounded-lg cursor-pointer"
                         title="Edit Video"
@@ -959,8 +1088,26 @@ export default function VideosPage() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleOpenVideoQrModal(v)}
+                              className={`h-8 w-8 p-0 rounded-lg cursor-pointer ${
+                                videoQrMap[String(getVideoIdStr(v))]
+                                  ? "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                                  : "text-slate-400 hover:text-[#004ac6] hover:bg-slate-100"
+                              }`}
+                              title={
+                                videoQrMap[String(getVideoIdStr(v))]
+                                  ? `Video QR Code (${videoQrMap[String(getVideoIdStr(v))].code})`
+                                  : "Generate / View Video QR Code"
+                              }
+                            >
+                              <QrCode className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleOpenEditModal(v)}
                               className="h-8 w-8 p-0 text-slate-600 hover:text-[#004ac6] hover:bg-slate-100 rounded-lg cursor-pointer"
+                              title="Edit Video"
                             >
                               <Edit3 className="h-3.5 w-3.5" />
                             </Button>
@@ -1287,6 +1434,208 @@ export default function VideosPage() {
                   {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mx-auto" /> : "Yes, Delete"}
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Video QR Code Preview & Generator Modal */}
+      {selectedVideoQr && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[#c3c6d7]/30 flex items-center justify-between bg-[#faf8ff]">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                  <QrCode className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-[#131b2e]">Video QR Code</h3>
+                  <p className="text-[11px] text-[#505f76] truncate max-w-xs font-medium">
+                    {selectedVideoQr.video.title}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedVideoQr(null)}
+                className="h-8 w-8 rounded-full hover:bg-slate-200/60 flex items-center justify-center text-slate-500 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              {selectedVideoQr.qr ? (
+                /* QR EXISTS: Show Preview & Download Options */
+                <div className="space-y-5">
+                  {/* QR Image & Code Display */}
+                  <div className="flex flex-col items-center justify-center p-6 bg-[#f4f7ff]/70 rounded-2xl border border-[#004ac6]/15 text-center">
+                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-[#c3c6d7]/40 mb-3">
+                      <img
+                        src={qrApi.getImageUrl(selectedVideoQr.qr.id, "png")}
+                        alt={`QR Code ${selectedVideoQr.qr.code}`}
+                        className="w-44 h-44 object-contain rounded-lg"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-base font-black text-[#004ac6] tracking-wider bg-white px-3 py-1 rounded-lg border border-[#004ac6]/20 shadow-2xs">
+                        {selectedVideoQr.qr.code}
+                      </span>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        Active
+                      </span>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                        🎥 Video
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-[#505f76] mt-1 font-medium">
+                      Scan this code to immediately autoplay this video lesson.
+                    </p>
+                  </div>
+
+                  {/* Video Lesson Context Card */}
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center gap-3">
+                    {selectedVideoQr.video.thumbnailUrl && (
+                      <img
+                        src={selectedVideoQr.video.thumbnailUrl}
+                        alt={selectedVideoQr.video.title}
+                        className="w-16 h-11 object-cover rounded-lg shrink-0 border border-slate-200"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-extrabold text-[#131b2e] truncate">
+                        {selectedVideoQr.video.title}
+                      </p>
+                      <p className="text-[11px] text-[#505f76] truncate font-medium">
+                        {selectedVideoQr.video.bookTitle ? `Book: ${selectedVideoQr.video.bookTitle}` : ""}
+                        {selectedVideoQr.video.chapterTitle ? ` | Ch: ${selectedVideoQr.video.chapterTitle}` : ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Public Link Box */}
+                  <div className="flex items-center justify-between p-2.5 bg-slate-100 rounded-xl text-xs font-mono text-[#505f76] border border-slate-200">
+                    <span className="truncate mr-2">/q/{selectedVideoQr.qr.code}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCopyUrl(selectedVideoQr.qr!.code)}
+                      className="h-7 px-2 text-xs font-semibold text-[#004ac6] hover:bg-white cursor-pointer shrink-0"
+                    >
+                      {copiedCode === selectedVideoQr.qr.code ? (
+                        <>
+                          <Check className="h-3 w-3 mr-1 text-emerald-600" /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3 mr-1" /> Copy Link
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Download & Print Buttons */}
+                  <div className="grid grid-cols-3 gap-2.5 pt-1">
+                    <a
+                      href={qrApi.getImageUrl(selectedVideoQr.qr.id, "png", true)}
+                      download={`Video-QR-${selectedVideoQr.qr.code}.png`}
+                      className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white border border-[#c3c6d7] text-xs font-bold text-[#131b2e] hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5 text-[#004ac6]" />
+                      <span>PNG</span>
+                    </a>
+
+                    <a
+                      href={qrApi.getImageUrl(selectedVideoQr.qr.id, "svg", true)}
+                      download={`Video-QR-${selectedVideoQr.qr.code}.svg`}
+                      className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white border border-[#c3c6d7] text-xs font-bold text-[#131b2e] hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5 text-purple-600" />
+                      <span>SVG</span>
+                    </a>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => handlePrintVideoLabel(selectedVideoQr.qr!, selectedVideoQr.video)}
+                      className="flex items-center justify-center gap-1.5 h-auto py-2.5 px-3 rounded-xl border-[#c3c6d7] text-xs font-bold text-[#131b2e] hover:bg-slate-50 shadow-2xs cursor-pointer"
+                    >
+                      <Printer className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Print</span>
+                    </Button>
+                  </div>
+
+                  {/* Test Scan / Open Link */}
+                  <div className="pt-2 text-center">
+                    <a
+                      href={`/q/${selectedVideoQr.qr.code}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#004ac6] hover:underline"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Test Scan Link (Open Video Viewer)
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                /* NO QR: Prompt to Generate */
+                <div className="text-center py-4 space-y-4">
+                  <div className="h-16 w-16 rounded-3xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto border border-indigo-100 shadow-sm">
+                    <QrCode className="h-8 w-8" />
+                  </div>
+
+                  <div>
+                    <h4 className="font-extrabold text-base text-[#131b2e]">
+                      No QR Code for this Video
+                    </h4>
+                    <p className="text-xs text-[#505f76] mt-1 max-w-sm mx-auto font-medium">
+                      Generate a unique QR code for <strong className="text-[#131b2e]">"{selectedVideoQr.video.title}"</strong>.
+                      Students can scan it with their phone camera or web scanner to autoplay this lesson instantly.
+                    </p>
+                  </div>
+
+                  {/* Video Preview Snippet */}
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-left flex items-center gap-3">
+                    {selectedVideoQr.video.thumbnailUrl && (
+                      <img
+                        src={selectedVideoQr.video.thumbnailUrl}
+                        alt={selectedVideoQr.video.title}
+                        className="w-16 h-11 object-cover rounded-lg shrink-0 border border-slate-200"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-extrabold text-[#131b2e] truncate">
+                        {selectedVideoQr.video.title}
+                      </p>
+                      <p className="text-[11px] text-[#505f76] truncate font-medium">
+                        {selectedVideoQr.video.bookTitle ? `Book: ${selectedVideoQr.video.bookTitle}` : "Standalone"}
+                        {selectedVideoQr.video.chapterTitle ? ` | Ch: ${selectedVideoQr.video.chapterTitle}` : ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <Button
+                      onClick={() => handleGenerateVideoQr(selectedVideoQr.video)}
+                      disabled={isGeneratingQr}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md cursor-pointer gap-2"
+                    >
+                      {isGeneratingQr ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Generating Video QR...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4" /> Generate Video QR Code
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

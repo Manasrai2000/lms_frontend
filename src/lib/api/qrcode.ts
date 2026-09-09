@@ -48,6 +48,8 @@ export const qrApi = {
     type?: string;
     status?: string;
     bookId?: number | string;
+    videoId?: number | string;
+    targetType?: "BOOK" | "VIDEO" | string;
   }): Promise<PaginatedQRResponse> => {
     return requestWithFallback<PaginatedQRResponse>("get", "/qr-codes", { params });
   },
@@ -73,31 +75,49 @@ export const qrApi = {
     return requestWithFallback("patch", `/qr-codes/${id}/map`, { bookId: Number(bookId) });
   },
 
-  // 6. Unmap QR from book
+  // 6. Map QR to video
+  mapToVideo: async (id: number | string, videoId: number | string) => {
+    return requestWithFallback("post", `/qr-codes/${id}/map-video`, { videoId: Number(videoId) });
+  },
+
+  // 7. Unmap QR from book or video
   unmap: async (id: number | string) => {
     return requestWithFallback("delete", `/qr-codes/${id}/map`);
   },
 
-  // 7. Update QR status
+  // 8. Update QR status
   updateStatus: async (id: number | string, status: "ACTIVE" | "INACTIVE") => {
     return requestWithFallback("patch", `/qr-codes/${id}/status`, { status });
   },
 
-  // 8. Generate QR for single book
+  // 9. Generate QR for single book
   generateForBook: async (bookId: number | string) => {
     return requestWithFallback("post", "/qr-codes/generate", { bookId: Number(bookId) });
   },
 
-  // 9. Bulk generate QRs
+  // 10. Generate QR for single video
+  generateForVideo: async (videoId: number | string) => {
+    return requestWithFallback("post", "/qr-codes/generate-video", { videoId: Number(videoId) });
+  },
+
+  // 11. Bulk generate QRs for books
   bulkGenerate: async (bookIds: (number | string)[]): Promise<BulkQRResponse> => {
     return requestWithFallback<BulkQRResponse>("post", "/qr-codes/bulk-generate", {
       bookIds: bookIds.map((id) => Number(id)),
     });
   },
 
-  // 10. Public verification
+  // 12. Bulk generate QRs for videos
+  bulkGenerateVideos: async (videoIds: (number | string)[]): Promise<BulkQRResponse> => {
+    return requestWithFallback<BulkQRResponse>("post", "/qr-codes/bulk-generate-videos", {
+      videoIds: videoIds.map((id) => Number(id)),
+    });
+  },
+
+  // 13. Public verification
   verify: async (code: string): Promise<QRVerifyResponse> => {
-    return requestWithFallback<QRVerifyResponse>("get", `/qr/verify/${encodeURIComponent(code)}`);
+    const cleanCode = extractQRCode(code);
+    return requestWithFallback<QRVerifyResponse>("get", `/qr-codes/verify/${encodeURIComponent(cleanCode)}`);
   },
 
   // Helper for image URLs
@@ -108,5 +128,30 @@ export const qrApi = {
     return `${rootUrl}/api/qr-codes/${idOrCode}/image?format=${format}&download=${download}`;
   },
 };
+
+/**
+ * Utility to extract clean QR code from scanned text, full URL, or query param
+ * e.g., "https://domain.com/q/BK-43098571" -> "BK-43098571"
+ * e.g., "https://domain.com?code=BK-43098571" -> "BK-43098571"
+ * e.g., "BK-43098571" -> "BK-43098571"
+ */
+export function extractQRCode(input: string): string {
+  if (!input) return "";
+  const trimmed = input.trim();
+  
+  // Match path pattern like /q/CODE or /verify/CODE
+  const pathMatch = trimmed.match(/(?:\/q\/|\/verify\/)([A-Za-z0-9_-]+)/i);
+  if (pathMatch && pathMatch[1]) {
+    return pathMatch[1];
+  }
+
+  // Match query parameter like ?code=CODE
+  const queryMatch = trimmed.match(/[?&]code=([A-Za-z0-9_-]+)/i);
+  if (queryMatch && queryMatch[1]) {
+    return queryMatch[1];
+  }
+
+  return trimmed;
+}
 
 export default qrApi;

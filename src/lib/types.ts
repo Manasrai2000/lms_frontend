@@ -8,6 +8,8 @@ export interface User {
   phoneNumber?: string;
   companyName?: string; // from Postman API body fields
   schoolName?: string;
+  classId?: number | string;
+  className?: string;
   role: Role;
   status: "active" | "inactive";
   createdDate?: string;
