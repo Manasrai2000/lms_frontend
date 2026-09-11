@@ -130,6 +130,21 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-500: #2563eb;
+  --color-brand-600: #1d4ed8;
+  --color-brand-700: #1e40af;
+  --color-brand-800: #1e3a8a;
+  --color-brand-900: #172554;
+  --color-accent-yellow: #facc15;
+  --color-accent-amber: #f59e0b;
+  --color-accent-green: #10b981;
+  --color-accent-emerald: #059669;
+  --color-accent-sky: #0ea5e9;
+  --color-accent-teal: #0d9488;
 }
 
 @layer base {
@@ -244,4 +259,57 @@
   --radius-3xl: calc(var(--radius) * 2.2);
 
   --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes scanLaser {
+  0%, 100% { top: 5%; }
+  50% { top: 85%; }
+}
+
+.animate-marquee {
+  animation: marquee 32s linear infinite;
+}
+
+.animate-float-slow {
+  animation: floatSlow 4s ease-in-out infinite;
+}
+
+.animate-scan-beam {
+  animation: scanLaser 2.2s ease-in-out infinite;
+}
+
+.arch-hero-mask {
+  border-radius: 24px 24px 0 0;
+}
+@media (min-width: 1024px) {
+  .arch-hero-mask {
+    border-radius: 24px 24px 24px 24px;
+  }
+}
+
+.arch-bottom-mask {
+  border-radius: 24px 24px 0 0;
+}
+@media (min-width: 1024px) {
+  .arch-bottom-mask {
+    border-radius: 32px 32px 0 0;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
