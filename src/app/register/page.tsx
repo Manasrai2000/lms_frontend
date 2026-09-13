@@ -10,7 +10,7 @@ import api, { saveNewTokens } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Sparkles, Loader2, UserPlus, Phone, Briefcase, User, Mail, GraduationCap, ShieldCheck } from "lucide-react";
+import { Sparkles, Loader2, UserPlus, Phone, Briefcase, User, Mail, GraduationCap, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
 interface ClassOption {
@@ -37,6 +37,7 @@ export default function RegisterPage() {
   const { user, isAuthenticated } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Classes state
   const [classes, setClasses] = useState<ClassOption[]>([]);
@@ -263,12 +264,27 @@ export default function RegisterPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-[#131b2e]">Password</label>
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  className="bg-[#faf8ff] border-[#c3c6d7]/70 text-[#131b2e] placeholder:text-zinc-400 focus:border-[#004ac6]/50"
-                  {...register("password")}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className="pr-10 bg-[#faf8ff] border-[#c3c6d7]/70 text-[#131b2e] placeholder:text-zinc-400 focus:border-[#004ac6]/50"
+                    {...register("password")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute top-2.5 right-3 text-[#505f76] hover:text-[#131b2e] transition-colors cursor-pointer p-0.5 rounded focus:outline-hidden"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4.5 w-4.5" />
+                    ) : (
+                      <Eye className="h-4.5 w-4.5" />
+                    )}
+                  </button>
+                </div>
                 {errors.password && (
                   <p className="text-xs font-medium text-destructive mt-1">{errors.password.message}</p>
                 )}

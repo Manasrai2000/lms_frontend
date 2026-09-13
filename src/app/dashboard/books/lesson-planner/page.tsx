@@ -163,17 +163,20 @@ export default function LessonPlannerPage() {
       if (bookRes.status === "fulfilled" && bookRes.value?.data) {
         const raw = bookRes.value.data;
         const arr = Array.isArray(raw) ? raw : raw.data || [];
-        setBooksList(
-          arr.map((b: any) => ({
-            id: b.id ?? b._id,
-            title: b.title || "Untitled Book",
-            code: b.code,
-            class: b.class || b.className,
-            classId: b.classId,
-            subject: b.subject || b.subjectName,
-            subjectId: b.subjectId,
-          }))
-        );
+        const mappedBooks = arr.map((b: any) => ({
+          id: b.id ?? b._id,
+          title: b.title || "Untitled Book",
+          code: b.code,
+          class: b.class || b.className,
+          classId: b.classId,
+          subject: b.subject || b.subjectName,
+          subjectId: b.subjectId,
+        }));
+        setBooksList(mappedBooks);
+        const queryBookId = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("bookId") : null;
+        if (queryBookId && mappedBooks.some((b: any) => String(b.id) === String(queryBookId))) {
+          setSelectedBookId(String(queryBookId));
+        }
       }
     } catch (err) {
       console.error("Error fetching master dropdowns:", err);
@@ -269,8 +272,8 @@ export default function LessonPlannerPage() {
 
   if (isStudent) {
     return (
-      <div className="p-8 max-w-4xl mx-auto my-12">
-        <div className="bg-white rounded-3xl border border-rose-200 p-8 text-center shadow-lg space-y-4">
+      <div className="p-4 max-w-4xl mx-auto my-6">
+        <div className="bg-white rounded-2xl border border-rose-200 p-4 md:p-5 text-center shadow-lg space-y-3.5">
           <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto">
             <ShieldAlert className="h-8 w-8" />
           </div>
@@ -412,9 +415,9 @@ export default function LessonPlannerPage() {
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto pb-12">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-[#c3c6d7]/40 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-5 rounded-2xl border border-[#c3c6d7]/40 shadow-sm">
         <div>
           <div className="flex items-center gap-2">
             <span className="p-2 rounded-xl bg-indigo-600/10 text-indigo-600">
@@ -449,7 +452,7 @@ export default function LessonPlannerPage() {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-white p-5 rounded-2xl border border-[#c3c6d7]/40 shadow-sm space-y-4">
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#c3c6d7]/40 shadow-sm space-y-3.5">
         <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
           <div className="relative flex-1 min-w-[240px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
@@ -585,7 +588,7 @@ export default function LessonPlannerPage() {
                 key={getItemId(item)}
                 className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
               >
-                <div className="p-5 space-y-4">
+                <div className="p-3.5 sm:p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 group-hover:scale-105 transition-transform">
                       <Calendar className="h-6 w-6" />
@@ -780,7 +783,7 @@ export default function LessonPlannerPage() {
       {/* Upload Modal */}
       {isUploadModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 border border-[#c3c6d7]/50 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 md:p-5 space-y-4 border border-[#c3c6d7]/50 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#c3c6d7]/30 pb-3">
               <h2 className="text-lg font-bold text-[#131b2e]">
                 {editingPlanner ? "Edit Lesson Planner" : "Upload Lesson Planner PDF"}
@@ -928,7 +931,7 @@ export default function LessonPlannerPage() {
                   title="PDF Preview"
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-white p-6 text-center">
+                <div className="flex flex-col items-center justify-center h-full text-white p-4 text-center">
                   <AlertTriangle className="h-10 w-10 text-amber-400 mb-2" />
                   <p>PDF URL is not available for preview.</p>
                 </div>
@@ -941,7 +944,7 @@ export default function LessonPlannerPage() {
       {/* Delete Modal */}
       {isDeleteOpen && itemToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 border border-[#c3c6d7]/50 shadow-xl">
+          <div className="bg-white rounded-2xl max-w-md w-full p-4 md:p-5 space-y-3.5 border border-[#c3c6d7]/50 shadow-xl">
             <div className="flex items-center gap-3 text-rose-600">
               <div className="p-2 rounded-xl bg-rose-100">
                 <AlertTriangle className="h-6 w-6" />

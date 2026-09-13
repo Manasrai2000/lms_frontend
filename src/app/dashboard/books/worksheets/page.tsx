@@ -176,17 +176,20 @@ export default function WorksheetsPage() {
       if (bookRes.status === "fulfilled" && bookRes.value?.data) {
         const raw = bookRes.value.data;
         const arr = Array.isArray(raw) ? raw : raw.data || [];
-        setBooksList(
-          arr.map((b: any) => ({
-            id: b.id ?? b._id,
-            title: b.title || "Untitled Book",
-            code: b.code,
-            class: b.class || b.className,
-            classId: b.classId,
-            subject: b.subject || b.subjectName,
-            subjectId: b.subjectId,
-          }))
-        );
+        const mappedBooks = arr.map((b: any) => ({
+          id: b.id ?? b._id,
+          title: b.title || "Untitled Book",
+          code: b.code,
+          class: b.class || b.className,
+          classId: b.classId,
+          subject: b.subject || b.subjectName,
+          subjectId: b.subjectId,
+        }));
+        setBooksList(mappedBooks);
+        const queryBookId = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("bookId") : null;
+        if (queryBookId && mappedBooks.some((b: any) => String(b.id) === String(queryBookId))) {
+          setSelectedBookId(String(queryBookId));
+        }
       }
     } catch (err) {
       console.error("Error fetching master dropdowns:", err);
@@ -410,9 +413,9 @@ export default function WorksheetsPage() {
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto pb-12">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-[#c3c6d7]/40 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-5 rounded-2xl border border-[#c3c6d7]/40 shadow-sm">
         <div>
           <div className="flex items-center gap-2">
             <span className="p-2 rounded-xl bg-[#004ac6]/10 text-[#004ac6]">
@@ -451,7 +454,7 @@ export default function WorksheetsPage() {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-white p-5 rounded-2xl border border-[#c3c6d7]/40 shadow-sm space-y-4">
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#c3c6d7]/40 shadow-sm space-y-3.5">
         <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
           {/* Search bar */}
           <div className="relative flex-1 min-w-[240px]">
@@ -619,7 +622,7 @@ export default function WorksheetsPage() {
                 key={getItemId(item)}
                 className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
               >
-                <div className="p-5 space-y-4">
+                <div className="p-3.5 sm:p-4 space-y-3">
                   {/* Top Bar */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="p-3 rounded-xl bg-[#004ac6]/10 text-[#004ac6] group-hover:scale-105 transition-transform">
@@ -850,7 +853,7 @@ export default function WorksheetsPage() {
       {/* Upload / Edit Worksheet Modal */}
       {isUploadModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 border border-[#c3c6d7]/50 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 md:p-5 space-y-4 border border-[#c3c6d7]/50 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#c3c6d7]/30 pb-3">
               <h2 className="text-lg font-bold text-[#131b2e]">
                 {editingWorksheet ? "Edit Worksheet" : "Upload Worksheet PDF"}
@@ -1027,7 +1030,7 @@ export default function WorksheetsPage() {
                   title="PDF Preview"
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-white p-6 text-center">
+                <div className="flex flex-col items-center justify-center h-full text-white p-4 text-center">
                   <AlertTriangle className="h-10 w-10 text-amber-400 mb-2" />
                   <p>PDF URL is not available for preview.</p>
                 </div>
@@ -1040,7 +1043,7 @@ export default function WorksheetsPage() {
       {/* Delete Confirmation Modal */}
       {isDeleteOpen && itemToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 border border-[#c3c6d7]/50 shadow-xl">
+          <div className="bg-white rounded-2xl max-w-md w-full p-4 md:p-5 space-y-3.5 border border-[#c3c6d7]/50 shadow-xl">
             <div className="flex items-center gap-3 text-rose-600">
               <div className="p-2 rounded-xl bg-rose-100">
                 <AlertTriangle className="h-6 w-6" />

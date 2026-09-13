@@ -353,9 +353,9 @@ export default function BulkGenerateQRPage() {
     visibleVideos.length > 0 && selectedVideoIds.length === visibleVideos.length;
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="space-y-4 md:space-y-5 pb-24">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-[#c3c6d7]/30 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-5 rounded-2xl border border-[#c3c6d7]/30 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
             <Layers className="h-6 w-6" />
@@ -533,7 +533,7 @@ export default function BulkGenerateQRPage() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-[#faf8ff] border-b border-[#c3c6d7]/30 text-[#505f76] font-semibold">
-                      <th className="py-3 px-4 w-10">
+                      <th className="py-2.5 px-4 w-10">
                         <input
                           type="checkbox"
                           checked={isAllBooksSelected}
@@ -541,10 +541,10 @@ export default function BulkGenerateQRPage() {
                           className="h-4 w-4 rounded text-[#004ac6] border-[#c3c6d7] focus:ring-[#004ac6] cursor-pointer"
                         />
                       </th>
-                      <th className="py-3 px-4">Textbook Title</th>
-                      <th className="py-3 px-4">Class</th>
-                      <th className="py-3 px-4">Subject</th>
-                      <th className="py-3 px-4">Active QR Status</th>
+                      <th className="py-2.5 px-4">Textbook Title</th>
+                      <th className="py-2.5 px-4">Class</th>
+                      <th className="py-2.5 px-4">Subject</th>
+                      <th className="py-2.5 px-4">Active QR Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#c3c6d7]/20 text-[#131b2e]">
@@ -558,7 +558,7 @@ export default function BulkGenerateQRPage() {
                             isSelected ? "bg-[#eaedff]/50" : ""
                           }`}
                         >
-                          <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-2 px-4" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -566,15 +566,15 @@ export default function BulkGenerateQRPage() {
                               className="h-4 w-4 rounded text-[#004ac6] border-[#c3c6d7] focus:ring-[#004ac6] cursor-pointer"
                             />
                           </td>
-                          <td className="py-3.5 px-4 font-bold text-[#131b2e]">
+                          <td className="py-2 px-4 font-bold text-[#131b2e]">
                             <div className="flex items-center gap-2">
                               <BookOpen className="h-4 w-4 text-[#004ac6] shrink-0" />
                               <span>{b.title}</span>
                             </div>
                           </td>
-                          <td className="py-3.5 px-4 text-[#505f76] font-semibold">{b.class || "—"}</td>
-                          <td className="py-3.5 px-4 text-[#505f76] font-semibold">{b.subject || "—"}</td>
-                          <td className="py-3.5 px-4">
+                          <td className="py-2 px-4 text-[#505f76] font-semibold">{b.class || "—"}</td>
+                          <td className="py-2 px-4 text-[#505f76] font-semibold">{b.subject || "—"}</td>
+                          <td className="py-2 px-4">
                             {b.hasActiveQr ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                 <CheckCircle2 className="h-3 w-3" />
@@ -697,7 +697,7 @@ export default function BulkGenerateQRPage() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-[#faf8ff] border-b border-[#c3c6d7]/30 text-[#505f76] font-semibold">
-                      <th className="py-3 px-4 w-10">
+                      <th className="py-2.5 px-4 w-10">
                         <input
                           type="checkbox"
                           checked={isAllVideosSelected}
@@ -705,10 +705,10 @@ export default function BulkGenerateQRPage() {
                           className="h-4 w-4 rounded text-[#004ac6] border-[#c3c6d7] focus:ring-[#004ac6] cursor-pointer"
                         />
                       </th>
-                      <th className="py-3 px-4">Video Title</th>
-                      <th className="py-3 px-4">Chapter</th>
-                      <th className="py-3 px-4">Duration</th>
-                      <th className="py-3 px-4">Active QR Status</th>
+                      <th className="py-2.5 px-4">Video Title</th>
+                      <th className="py-2.5 px-4">Chapter</th>
+                      <th className="py-2.5 px-4">Duration</th>
+                      <th className="py-2.5 px-4">Active QR Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#c3c6d7]/20 text-[#131b2e]">
@@ -722,7 +722,7 @@ export default function BulkGenerateQRPage() {
                             isSelected ? "bg-rose-50/40" : ""
                           }`}
                         >
-                          <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-2 px-4" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -730,7 +730,7 @@ export default function BulkGenerateQRPage() {
                               className="h-4 w-4 rounded text-rose-600 border-[#c3c6d7] focus:ring-rose-500 cursor-pointer"
                             />
                           </td>
-                          <td className="py-3.5 px-4 font-bold text-[#131b2e]">
+                          <td className="py-2 px-4 font-bold text-[#131b2e]">
                             <div className="flex items-center gap-2">
                               <div className="h-6 w-6 rounded bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
                                 <Play className="h-3 w-3 fill-current" />
@@ -738,13 +738,13 @@ export default function BulkGenerateQRPage() {
                               <span>{v.title}</span>
                             </div>
                           </td>
-                          <td className="py-3.5 px-4 text-[#505f76] font-semibold">
+                          <td className="py-2 px-4 text-[#505f76] font-semibold">
                             {v.chapterTitle || "—"}
                           </td>
-                          <td className="py-3.5 px-4 text-[#505f76] font-semibold">
+                          <td className="py-2 px-4 text-[#505f76] font-semibold">
                             {v.duration || "—"}
                           </td>
-                          <td className="py-3.5 px-4">
+                          <td className="py-2 px-4">
                             {v.hasActiveQr ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                 <CheckCircle2 className="h-3 w-3" />
@@ -769,7 +769,7 @@ export default function BulkGenerateQRPage() {
       )}
 
       {/* Sticky Bottom Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#c3c6d7]/50 py-3 px-6 shadow-xl z-40 flex items-center justify-between">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#c3c6d7]/50 py-2.5 px-4 shadow-xl z-40 flex items-center justify-between">
         <div className="text-xs font-semibold text-[#131b2e]">
           {activeTab === "BOOKS" ? (
             <span>
@@ -786,7 +786,7 @@ export default function BulkGenerateQRPage() {
           <Button
             onClick={handleRunBulkBooks}
             disabled={selectedBookIds.length === 0 || isProcessing}
-            className="bg-[#004ac6] hover:bg-[#003899] text-white font-bold text-xs h-10 px-6 rounded-xl shadow-md shadow-[#004ac6]/20 cursor-pointer disabled:opacity-50"
+            className="bg-[#004ac6] hover:bg-[#003899] text-white font-bold text-xs h-9 px-4 rounded-xl shadow-md shadow-[#004ac6]/20 cursor-pointer disabled:opacity-50"
           >
             {isProcessing ? (
               <>
@@ -804,7 +804,7 @@ export default function BulkGenerateQRPage() {
           <Button
             onClick={handleRunBulkVideos}
             disabled={selectedVideoIds.length === 0 || isProcessing}
-            className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-10 px-6 rounded-xl shadow-md shadow-rose-600/20 cursor-pointer disabled:opacity-50"
+            className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs h-9 px-4 rounded-xl shadow-md shadow-rose-600/20 cursor-pointer disabled:opacity-50"
           >
             {isProcessing ? (
               <>
@@ -825,7 +825,7 @@ export default function BulkGenerateQRPage() {
       {bulkResults && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="p-4 border-b border-[#c3c6d7]/30 flex items-center justify-between bg-[#faf8ff]">
+            <div className="px-4 py-3 border-b border-[#c3c6d7]/30 flex items-center justify-between bg-[#faf8ff]">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-[#004ac6]" />
                 <h3 className="text-sm font-bold text-[#131b2e]">Bulk QR Generation Summary</h3>
@@ -838,7 +838,7 @@ export default function BulkGenerateQRPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
+            <div className="p-4 space-y-3.5 overflow-y-auto custom-scrollbar">
               {/* Metrics row */}
               <div className="grid grid-cols-4 gap-3 text-center">
                 <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200">
@@ -915,7 +915,7 @@ export default function BulkGenerateQRPage() {
               </div>
             </div>
 
-            <div className="p-4 border-t border-[#c3c6d7]/20 flex justify-end gap-3 bg-[#faf8ff]">
+            <div className="px-4 py-3 border-t border-[#c3c6d7]/20 flex justify-end gap-3 bg-[#faf8ff]">
               <Button
                 onClick={() => {
                   setBulkResults(null);

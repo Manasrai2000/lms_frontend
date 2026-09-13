@@ -297,15 +297,15 @@ export default function AssignTeacherClassesPage() {
   const currentlyAssignedClasses = allClasses.filter((c) => selectedClassIds.has(c.id));
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 text-[#131b2e]">
+    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto pb-12 text-[#131b2e]">
       {/* Top Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-[#c3c6d7]/40 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-5 rounded-2xl border border-[#c3c6d7]/40 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center font-bold">
-            <GraduationCap className="h-5 w-5" />
+          <div className="h-9 w-9 rounded-xl bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center font-bold">
+            <GraduationCap className="h-4 w-4" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-[#131b2e] tracking-tight">
+            <h1 className="text-xl md:text-2xl font-black text-[#131b2e] tracking-tight">
               Assign Classes to Teacher
             </h1>
             <p className="text-xs text-[#505f76] font-medium">
@@ -317,12 +317,12 @@ export default function AssignTeacherClassesPage() {
         <Button
           onClick={handleSaveAssignments}
           disabled={isSaving || !selectedTeacherId}
-          className="bg-[#004ac6] hover:bg-[#003cb0] text-white shadow-md shadow-[#004ac6]/20 font-semibold cursor-pointer"
+          className="bg-[#004ac6] hover:bg-[#003cb0] text-white shadow-md shadow-[#004ac6]/20 font-semibold cursor-pointer h-9 text-xs"
         >
           {isSaving ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
           ) : (
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="h-3.5 w-3.5 mr-1.5" />
           )}
           Save Assignments
         </Button>
@@ -331,7 +331,7 @@ export default function AssignTeacherClassesPage() {
       {/* Alert Status Banner */}
       {statusMessage && (
         <div
-          className={`p-4 rounded-xl flex items-center justify-between gap-3 text-sm font-semibold border ${
+          className={`p-3 rounded-xl flex items-center justify-between gap-3 text-xs font-semibold border ${
             statusMessage.type === "success"
               ? "bg-emerald-50 text-emerald-800 border-emerald-200"
               : "bg-rose-50 text-rose-800 border-rose-200"
@@ -339,9 +339,9 @@ export default function AssignTeacherClassesPage() {
         >
           <div className="flex items-center gap-2">
             {statusMessage.type === "success" ? (
-              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
             ) : (
-              <XCircle className="h-5 w-5 text-rose-600 shrink-0" />
+              <XCircle className="h-4 w-4 text-rose-600 shrink-0" />
             )}
             <span>{statusMessage.text}</span>
           </div>
@@ -349,16 +349,16 @@ export default function AssignTeacherClassesPage() {
             onClick={() => setStatusMessage(null)}
             className="text-zinc-400 hover:text-zinc-600 cursor-pointer"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
 
       {/* Main Grid: Left Teacher Selector & Right Classes Checkbox Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-5">
         {/* Step 1: Left Sidebar - Select Teacher */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 p-5 shadow-sm space-y-4">
+          <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 p-3.5 sm:p-4 shadow-sm space-y-3.5">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-[#131b2e] flex items-center gap-2">
                 <Users className="h-4 w-4 text-[#004ac6]" />
@@ -449,8 +449,8 @@ export default function AssignTeacherClassesPage() {
         </div>
 
         {/* Step 2 & 3: Right Panel - Assigned Classes & Multi-select Checkbox Grid */}
-        <div className="lg:col-span-8 space-y-6">
-          <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 p-5 shadow-sm space-y-5">
+        <div className="lg:col-span-8 space-y-4">
+          <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 p-3.5 sm:p-4 shadow-sm space-y-4">
             {/* Header Info */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#c3c6d7]/30">
               <div>

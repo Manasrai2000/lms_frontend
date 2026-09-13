@@ -389,9 +389,9 @@ export default function GenerateQRPage() {
   const activeTargetItem = activeTab === "BOOK" ? selectedBook : selectedVideo;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4 md:space-y-5">
       {/* Top Header */}
-      <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-[#c3c6d7]/30 shadow-sm">
+      <div className="flex items-center justify-between bg-white p-4 md:p-5 rounded-2xl border border-[#c3c6d7]/30 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-[#004ac6]/10 text-[#004ac6]">
             <QrCode className="h-6 w-6" />
@@ -451,9 +451,9 @@ export default function GenerateQRPage() {
       </div>
 
       {/* Main Workspace Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-5">
         {/* Left Column: Selectors */}
-        <div className="lg:col-span-7 bg-white p-6 rounded-2xl border border-[#c3c6d7]/30 shadow-sm space-y-4">
+        <div className="lg:col-span-7 bg-white p-4 md:p-5 rounded-2xl border border-[#c3c6d7]/30 shadow-sm space-y-4">
           {/* TAB 1: BOOK SELECTOR */}
           {activeTab === "BOOK" && (
             <div className="space-y-4">
@@ -478,7 +478,7 @@ export default function GenerateQRPage() {
 
               {/* Book Catalog List */}
               {isLoadingBooks ? (
-                <div className="p-8 text-center flex flex-col items-center justify-center gap-2">
+                <div className="p-5 text-center flex flex-col items-center justify-center gap-2">
                   <Loader2 className="h-6 w-6 animate-spin text-[#004ac6]" />
                   <p className="text-xs text-[#505f76]">Loading textbook catalog...</p>
                 </div>
@@ -589,12 +589,12 @@ export default function GenerateQRPage() {
                   </div>
 
                   {isLoadingVideos ? (
-                    <div className="p-6 text-center text-xs text-[#505f76]">
+                    <div className="p-4 text-center text-xs text-[#505f76]">
                       <Loader2 className="h-5 w-5 animate-spin mx-auto text-[#004ac6] mb-1" />
                       Loading videos...
                     </div>
                   ) : filteredVideos.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-[#505f76] border border-dashed rounded-xl bg-zinc-50">
+                    <div className="p-4 text-center text-xs text-[#505f76] border border-dashed rounded-xl bg-zinc-50">
                       No video lectures found for this selection.
                     </div>
                   ) : (
@@ -640,7 +640,7 @@ export default function GenerateQRPage() {
         <div className="lg:col-span-5 space-y-4">
           {/* Target Selected Summary Card */}
           {activeTab === "BOOK" && selectedBook && (
-            <div className="bg-white p-5 rounded-2xl border border-[#c3c6d7]/30 shadow-sm space-y-3">
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#c3c6d7]/30 shadow-sm space-y-3">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#004ac6] bg-[#eaedff] px-2 py-0.5 rounded-full">
                 Selected Book
               </span>
@@ -698,7 +698,7 @@ export default function GenerateQRPage() {
           )}
 
           {activeTab === "VIDEO" && selectedVideo && (
-            <div className="bg-white p-5 rounded-2xl border border-[#c3c6d7]/30 shadow-sm space-y-3">
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#c3c6d7]/30 shadow-sm space-y-3">
               <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
                 Selected Video
               </span>
@@ -756,7 +756,7 @@ export default function GenerateQRPage() {
 
           {/* Generated Result Showcase Card */}
           {generatedResult && (
-            <div className="bg-white p-6 rounded-2xl border-2 border-emerald-400/80 shadow-md space-y-4 animate-in fade-in duration-200">
+            <div className="bg-white p-4 md:p-5 rounded-2xl border-2 border-emerald-400/80 shadow-md space-y-4 animate-in fade-in duration-200">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600" />

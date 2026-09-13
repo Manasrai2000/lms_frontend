@@ -233,7 +233,7 @@ export default function QRScannerModal({
         <div id="html5-qr-file-scanner" className="hidden" />
 
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-[#c3c6d7]/30 flex items-center justify-between bg-[#faf8ff]">
+        <div className="px-4 py-3 border-b border-[#c3c6d7]/30 flex items-center justify-between bg-[#faf8ff]">
           <div className="flex items-center gap-2.5">
             <div className="h-9 w-9 rounded-xl bg-[#004ac6] text-white flex items-center justify-center font-bold shadow-sm shadow-[#004ac6]/20">
               <QrCode className="h-5 w-5" />
@@ -295,7 +295,7 @@ export default function QRScannerModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 flex-1 overflow-y-auto space-y-4">
+        <div className="p-4 flex-1 overflow-y-auto space-y-3.5">
           {/* Verification Alert / Status */}
           {verificationError && (
             <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-800 animate-in fade-in duration-200">
@@ -324,7 +324,7 @@ export default function QRScannerModal({
 
                 {/* Camera Error Display */}
                 {cameraError && (
-                  <div className="absolute inset-0 bg-zinc-900/90 p-6 flex flex-col items-center justify-center text-center text-white gap-3 z-10">
+                  <div className="absolute inset-0 bg-zinc-900/90 p-4 flex flex-col items-center justify-center text-center text-white gap-3 z-10">
                     <AlertCircle className="h-8 w-8 text-rose-400" />
                     <p className="text-xs text-zinc-300">{cameraError}</p>
                     <button
@@ -363,7 +363,7 @@ export default function QRScannerModal({
             <div className="space-y-4">
               <label
                 htmlFor="qr-file-upload-input"
-                className="border-2 border-dashed border-[#c3c6d7] hover:border-[#004ac6] rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors bg-[#faf8ff] hover:bg-[#eaedff]/30"
+                className="border-2 border-dashed border-[#c3c6d7] hover:border-[#004ac6] rounded-2xl p-5 md:p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-colors bg-[#faf8ff] hover:bg-[#eaedff]/30"
               >
                 <div className="h-12 w-12 rounded-2xl bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center mb-3">
                   <Upload className="h-6 w-6" />

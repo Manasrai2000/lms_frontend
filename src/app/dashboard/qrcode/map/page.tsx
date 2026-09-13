@@ -355,9 +355,9 @@ export default function MapExistingQRPage() {
   });
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-4 md:space-y-5">
       {/* Top Header */}
-      <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-[#c3c6d7]/30 shadow-sm">
+      <div className="flex items-center justify-between bg-white p-4 md:p-5 rounded-2xl border border-[#c3c6d7]/30 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-[#004ac6]/10 text-[#004ac6]">
             <Link2 className="h-6 w-6" />
@@ -382,7 +382,7 @@ export default function MapExistingQRPage() {
       </div>
 
       {/* Stepper Wizard Indicator */}
-      <div className="flex items-center justify-between px-6 py-3 bg-white rounded-xl border border-[#c3c6d7]/30 shadow-sm text-xs font-semibold">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-white rounded-xl border border-[#c3c6d7]/30 shadow-sm text-xs font-semibold">
         <div className="flex items-center gap-2">
           <span
             className={`h-6 w-6 rounded-full flex items-center justify-center font-bold text-xs ${
@@ -429,7 +429,7 @@ export default function MapExistingQRPage() {
 
       {/* STEP 1: Enter / Scan QR Code */}
       {step === 1 && (
-        <div className="bg-white p-6 rounded-2xl border border-[#c3c6d7]/30 shadow-sm space-y-6">
+        <div className="bg-white p-4 md:p-5 rounded-2xl border border-[#c3c6d7]/30 shadow-sm space-y-4">
           <div>
             <h2 className="text-sm font-bold text-[#131b2e]">Step 1: Enter Physical QR Code</h2>
             <p className="text-xs text-[#505f76] mt-0.5">
@@ -542,7 +542,7 @@ export default function MapExistingQRPage() {
 
       {/* STEP 2: Select Target Item (Book or Video) */}
       {step === 2 && (
-        <div className="bg-white p-6 rounded-2xl border border-[#c3c6d7]/30 shadow-sm space-y-6">
+        <div className="bg-white p-4 md:p-5 rounded-2xl border border-[#c3c6d7]/30 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-[#c3c6d7]/20 pb-4">
             <div>
               <h2 className="text-sm font-bold text-[#131b2e]">Step 2: Select Item to Map</h2>
@@ -611,7 +611,7 @@ export default function MapExistingQRPage() {
               </div>
 
               {isLoadingBooks ? (
-                <div className="p-8 text-center flex flex-col items-center justify-center gap-2">
+                <div className="p-4 text-center flex flex-col items-center justify-center gap-2">
                   <Loader2 className="h-6 w-6 animate-spin text-[#004ac6]" />
                   <p className="text-xs text-[#505f76]">Loading textbook catalog...</p>
                 </div>
@@ -661,7 +661,7 @@ export default function MapExistingQRPage() {
 
               {/* Selected Book Preview */}
               {selectedBook && (
-                <div className="bg-[#faf8ff] p-4 rounded-xl border border-[#004ac6]/30 flex items-center justify-between mt-3">
+                <div className="bg-[#faf8ff] p-3.5 sm:p-4 rounded-xl border border-[#004ac6]/30 flex items-center justify-between mt-3">
                   <div>
                     <span className="text-[10px] font-bold text-[#004ac6] uppercase tracking-wider">
                       Selected Book
@@ -676,7 +676,7 @@ export default function MapExistingQRPage() {
                   <Button
                     onClick={handleConfirmMapping}
                     disabled={isSubmittingMap}
-                    className="bg-[#004ac6] hover:bg-[#003899] text-white font-semibold text-xs h-10 px-6 rounded-xl gap-2 cursor-pointer shadow-sm"
+                    className="bg-[#004ac6] hover:bg-[#003899] text-white font-semibold text-xs h-9 px-4 rounded-xl gap-2 cursor-pointer shadow-sm"
                   >
                     {isSubmittingMap ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                     Confirm Mapping
@@ -740,12 +740,12 @@ export default function MapExistingQRPage() {
                   </label>
 
                   {isLoadingVideos ? (
-                    <div className="p-6 text-center text-xs text-[#505f76]">
+                    <div className="p-4 text-center text-xs text-[#505f76]">
                       <Loader2 className="h-5 w-5 animate-spin mx-auto text-[#004ac6] mb-1" />
                       Loading videos...
                     </div>
                   ) : filteredVideos.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-[#505f76] border border-dashed rounded-xl bg-zinc-50">
+                    <div className="p-4 text-center text-xs text-[#505f76] border border-dashed rounded-xl bg-zinc-50">
                       No video lectures found for this textbook.
                     </div>
                   ) : (
@@ -788,7 +788,7 @@ export default function MapExistingQRPage() {
 
               {/* Selected Video Preview */}
               {selectedVideo && (
-                <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-200 flex items-center justify-between mt-3">
+                <div className="bg-rose-50/50 p-3.5 sm:p-4 rounded-xl border border-rose-200 flex items-center justify-between mt-3">
                   <div>
                     <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider">
                       Selected Video
@@ -800,7 +800,7 @@ export default function MapExistingQRPage() {
                   <Button
                     onClick={handleConfirmMapping}
                     disabled={isSubmittingMap}
-                    className="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs h-10 px-6 rounded-xl gap-2 cursor-pointer shadow-sm"
+                    className="bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs h-9 px-4 rounded-xl gap-2 cursor-pointer shadow-sm"
                   >
                     {isSubmittingMap ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                     Confirm Mapping
@@ -814,9 +814,9 @@ export default function MapExistingQRPage() {
 
       {/* STEP 3: Success Presentation */}
       {step === 3 && mappedResult && (
-        <div className="bg-white p-8 rounded-2xl border border-emerald-200 shadow-sm text-center space-y-6 animate-in fade-in duration-200">
-          <div className="inline-flex p-3 rounded-full bg-emerald-100 text-emerald-600">
-            <CheckCircle2 className="h-10 w-10" />
+        <div className="bg-white p-4 md:p-5 rounded-2xl border border-emerald-200 shadow-sm text-center space-y-4 md:space-y-5 animate-in fade-in duration-200">
+          <div className="inline-flex p-2.5 rounded-full bg-emerald-100 text-emerald-600">
+            <CheckCircle2 className="h-8 w-8" />
           </div>
 
           <div>
@@ -827,7 +827,7 @@ export default function MapExistingQRPage() {
           </div>
 
           {/* Mapped Card Details */}
-          <div className="max-w-md mx-auto bg-[#faf8ff] p-6 rounded-2xl border border-[#c3c6d7]/40 text-left space-y-4">
+          <div className="max-w-md mx-auto bg-[#faf8ff] p-4 rounded-xl border border-[#c3c6d7]/40 text-left space-y-3.5">
             <div className="flex items-center justify-between border-b border-[#c3c6d7]/30 pb-3">
               <div>
                 <p className="text-[10px] font-bold text-[#505f76]">QR CODE</p>
@@ -854,12 +854,12 @@ export default function MapExistingQRPage() {
             <Button
               variant="outline"
               onClick={handleReset}
-              className="border-[#c3c6d7] text-[#131b2e] text-xs font-semibold h-10 px-5 cursor-pointer"
+              className="border-[#c3c6d7] text-[#131b2e] text-xs font-semibold h-9 px-4 cursor-pointer"
             >
               Map Another QR
             </Button>
             <Link href="/dashboard/qrcode">
-              <Button className="bg-[#004ac6] hover:bg-[#003899] text-white text-xs font-semibold h-10 px-6 cursor-pointer">
+              <Button className="bg-[#004ac6] hover:bg-[#003899] text-white text-xs font-semibold h-9 px-4 cursor-pointer">
                 View All QR Codes
               </Button>
             </Link>

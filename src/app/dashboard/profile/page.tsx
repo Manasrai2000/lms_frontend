@@ -199,7 +199,7 @@ export default function ProfilePage() {
 
   if (!activeProfile) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-2xl p-6 flex items-center gap-4 text-red-800">
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-4 text-red-800">
         <ShieldAlert className="h-6 w-6 text-red-600" />
         <div>
           <h3 className="font-bold">Access Error</h3>
@@ -210,14 +210,14 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-4 md:space-y-5 max-w-4xl mx-auto">
       {/* Banner / Header Card */}
-      <div className="relative overflow-hidden rounded-2xl border border-[#c3c6d7]/35 bg-gradient-to-r from-[#004ac6] via-[#2563eb] to-[#4f46e5] p-6 md:p-8 text-white shadow-md">
+      <div className="relative overflow-hidden rounded-2xl border border-[#c3c6d7]/35 bg-gradient-to-r from-[#004ac6] via-[#2563eb] to-[#4f46e5] p-4 md:p-5 text-white shadow-md">
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 h-40 w-40 bg-white/5 rounded-full blur-3xl" />
         <div className="absolute -bottom-10 -left-10 h-32 w-32 bg-white/10 rounded-full blur-2xl" />
 
-        <div className="relative flex flex-col md:flex-row items-center gap-6">
+        <div className="relative flex flex-col md:flex-row items-center gap-4 md:gap-5">
           {/* Avatar Container */}
           <div className="relative group cursor-pointer" onClick={handleImageClick}>
             <input 
@@ -288,10 +288,10 @@ export default function ProfilePage() {
       </div>
 
       {/* Main Content Details Grid */}
-      <div className="bg-white border border-[#c3c6d7]/35 rounded-2xl p-6 md:p-8 shadow-sm">
+      <div className="bg-white border border-[#c3c6d7]/35 rounded-2xl p-4 md:p-5 shadow-sm">
         {isEditing ? (
-          <form onSubmit={handleSave} className="space-y-6">
-            <div className="flex items-center justify-between border-b border-[#c3c6d7]/20 pb-4">
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="flex items-center justify-between border-b border-[#c3c6d7]/20 pb-3">
               <div>
                 <h3 className="text-lg font-bold text-[#131b2e]">Modify Profile Details</h3>
                 <p className="text-xs text-[#505f76]">Keep your LMS profile information accurate and up to date.</p>
@@ -323,7 +323,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#131b2e]">Full Name</label>
                 <div className="relative">
@@ -382,15 +382,15 @@ export default function ProfilePage() {
             </div>
           </form>
         ) : (
-          <div className="space-y-6">
-            <div className="border-b border-[#c3c6d7]/20 pb-4">
+          <div className="space-y-4">
+            <div className="border-b border-[#c3c6d7]/20 pb-3">
               <h3 className="text-lg font-bold text-[#131b2e]">Profile Details</h3>
               <p className="text-xs text-[#505f76]">These are your personal and administrative details.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                <div className="flex items-start gap-3.5 pb-3.5 border-b border-[#c3c6d7]/15">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3.5 pb-2.5 border-b border-[#c3c6d7]/15">
                   <div className="p-2 rounded-lg bg-[#eaedff] text-[#004ac6]">
                     <UserIcon className="h-5 w-5" />
                   </div>
@@ -400,7 +400,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3.5 pb-3.5 border-b border-[#c3c6d7]/15">
+                <div className="flex items-start gap-3.5 pb-2.5 border-b border-[#c3c6d7]/15">
                   <div className="p-2 rounded-lg bg-[#eaedff] text-[#004ac6]">
                     <span className="text-sm font-bold w-5 h-5 flex items-center justify-center leading-none">@</span>
                   </div>
@@ -410,7 +410,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3.5 pb-3.5 md:border-b-0 border-b border-[#c3c6d7]/15">
+                <div className="flex items-start gap-3.5 pb-2.5 md:border-b-0 border-b border-[#c3c6d7]/15">
                   <div className="p-2 rounded-lg bg-[#eaedff] text-[#004ac6]">
                     <Mail className="h-5 w-5" />
                   </div>
@@ -421,8 +421,8 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-start gap-3.5 pb-3.5 border-b border-[#c3c6d7]/15">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3.5 pb-2.5 border-b border-[#c3c6d7]/15">
                   <div className="p-2 rounded-lg bg-[#eaedff] text-[#004ac6]">
                     <Phone className="h-5 w-5" />
                   </div>
@@ -432,7 +432,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3.5 pb-3.5 border-b border-[#c3c6d7]/15">
+                <div className="flex items-start gap-3.5 pb-2.5 border-b border-[#c3c6d7]/15">
                   <div className="p-2 rounded-lg bg-[#eaedff] text-[#004ac6]">
                     <Building2 className="h-5 w-5" />
                   </div>
@@ -442,7 +442,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3.5 pb-3.5 border-b-0">
+                <div className="flex items-start gap-3.5 pb-2.5 border-b-0">
                   <div className="p-2 rounded-lg bg-[#eaedff] text-[#004ac6]">
                     <Award className="h-5 w-5" />
                   </div>

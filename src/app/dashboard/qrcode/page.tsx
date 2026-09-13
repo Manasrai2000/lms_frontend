@@ -293,9 +293,9 @@ export default function QRListPage() {
   const inactiveCount = qrList.filter((q) => q.status === "INACTIVE").length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-5">
       {/* 1. Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-[#c3c6d7]/30 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-5 rounded-2xl border border-[#c3c6d7]/30 shadow-sm">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-[#004ac6]/10 text-[#004ac6]">
@@ -767,7 +767,7 @@ export default function QRListPage() {
               </button>
             </div>
 
-            <div className="p-6 text-center space-y-4">
+            <div className="p-4 md:p-5 text-center space-y-3.5">
               {/* Visual QR Image */}
               <div className="inline-block p-4 bg-white rounded-2xl border-2 border-dashed border-[#004ac6]/30 shadow-inner">
                 <img
@@ -875,7 +875,7 @@ export default function QRListPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-4 space-y-3.5">
               <div className="bg-[#faf8ff] p-3 rounded-xl border border-[#c3c6d7]/30 flex items-center justify-between">
                 <div>
                   <p className="text-[11px] font-semibold text-[#505f76]">Selected QR Code</p>
@@ -951,7 +951,7 @@ export default function QRListPage() {
               </div>
             </div>
 
-            <div className="p-6 space-y-3">
+            <div className="p-4 space-y-3">
               <p className="text-xs text-[#505f76] leading-relaxed">
                 Are you sure you want to unmap QR code{" "}
                 <span className="font-mono font-bold text-[#004ac6]">{unmapQr.code}</span> from Book{" "}

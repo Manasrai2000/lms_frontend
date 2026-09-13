@@ -447,53 +447,53 @@ export default function UserManagementPage() {
   const endIndex = Math.min(meta.page * meta.limit, meta.total);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 text-[#131b2e]">
+    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto pb-12 text-[#131b2e]">
       {/* Top Banner */}
-      <div className="relative overflow-hidden rounded-2xl border border-[#c3c6d7]/35 bg-gradient-to-b from-[#dbe1ff]/60 via-[#faf8ff] to-white p-6 md:p-8 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-[#c3c6d7]/35 bg-gradient-to-b from-[#dbe1ff]/60 via-[#faf8ff] to-white p-4 md:p-5 shadow-sm">
         <div className="absolute top-0 right-0 h-40 w-40 bg-[#004ac6]/5 rounded-full blur-3xl" />
         <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-2">
-            <h2 className="text-xl md:text-3xl font-bold text-[#131b2e] flex items-center gap-2">
-              User Directory & Access Control <Users className="h-6 w-6 text-[#004ac6]" />
+          <div className="space-y-1.5">
+            <h2 className="text-xl md:text-2xl font-bold text-[#131b2e] flex items-center gap-2">
+              User Directory & Access Control <Users className="h-5 w-5 text-[#004ac6]" />
             </h2>
-            <p className="text-sm text-[#505f76] max-w-xl leading-relaxed">
+            <p className="text-xs md:text-sm text-[#505f76] max-w-xl leading-relaxed">
               Create teachers & students, edit user profiles, assign classes, manage active status, reset credentials, and monitor session activity.
             </p>
           </div>
 
           <Button
             onClick={() => setIsCreateModalOpen(true)}
-            className="bg-[#004ac6] hover:bg-[#004ac6]/90 text-white font-semibold flex items-center gap-2 shadow-md shadow-[#004ac6]/20 cursor-pointer self-start md:self-auto h-11 px-5"
+            className="bg-[#004ac6] hover:bg-[#004ac6]/90 text-white font-semibold flex items-center gap-2 shadow-md shadow-[#004ac6]/20 cursor-pointer self-start md:self-auto h-9 px-4 text-xs"
           >
-            <UserPlus className="h-5 w-5" />
+            <UserPlus className="h-4 w-4" />
             Create Teacher / Student
           </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-5 border border-[#c3c6d7]/40 shadow-sm flex items-center gap-4 hover:border-[#004ac6]/30 transition-colors">
-          <div className="h-10 w-10 rounded-lg bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center">
-            <Users className="h-5 w-5" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="bg-white rounded-xl p-3.5 sm:p-4 border border-[#c3c6d7]/40 shadow-sm flex items-center gap-3.5 hover:border-[#004ac6]/30 transition-colors">
+          <div className="h-9 w-9 rounded-lg bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center">
+            <Users className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-xs text-[#505f76] font-semibold">
+            <p className="text-[11px] text-[#505f76] font-semibold">
               {isTeacher ? "Total Students" : "Total Users"}
             </p>
-            <p className="text-2xl font-bold text-[#131b2e] tracking-tight">{totalUsers}</p>
+            <p className="text-xl font-bold text-[#131b2e] tracking-tight">{totalUsers}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-[#c3c6d7]/40 shadow-sm flex items-center gap-4 hover:border-[#004ac6]/30 transition-colors">
-          <div className="h-10 w-10 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
-            <Shield className="h-5 w-5" />
+        <div className="bg-white rounded-xl p-3.5 sm:p-4 border border-[#c3c6d7]/40 shadow-sm flex items-center gap-3.5 hover:border-[#004ac6]/30 transition-colors">
+          <div className="h-9 w-9 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
+            <Shield className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-xs text-[#505f76] font-semibold">
+            <p className="text-[11px] text-[#505f76] font-semibold">
               {isTeacher ? "Enrolled Students" : "Admins / Teachers / Students"}
             </p>
-            <p className="text-sm font-bold text-[#131b2e] tracking-tight">
+            <p className="text-xs font-bold text-[#131b2e] tracking-tight">
               {isTeacher
                 ? `${studentCount} Student${studentCount === 1 ? "" : "s"}`
                 : `${adminCount} Admin • ${teacherCount} Teacher • ${studentCount} Student`}
@@ -501,23 +501,23 @@ export default function UserManagementPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-[#c3c6d7]/40 shadow-sm flex items-center gap-4 hover:border-[#004ac6]/30 transition-colors">
-          <div className="h-10 w-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-            <UserCheck className="h-5 w-5" />
+        <div className="bg-white rounded-xl p-3.5 sm:p-4 border border-[#c3c6d7]/40 shadow-sm flex items-center gap-3.5 hover:border-[#004ac6]/30 transition-colors">
+          <div className="h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+            <UserCheck className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-xs text-[#505f76] font-semibold">Active (Page)</p>
-            <p className="text-2xl font-bold text-[#131b2e] tracking-tight">{activeCount}</p>
+            <p className="text-[11px] text-[#505f76] font-semibold">Active (Page)</p>
+            <p className="text-xl font-bold text-[#131b2e] tracking-tight">{activeCount}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-[#c3c6d7]/40 shadow-sm flex items-center gap-4 hover:border-[#004ac6]/30 transition-colors">
-          <div className="h-10 w-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center">
-            <UserX className="h-5 w-5" />
+        <div className="bg-white rounded-xl p-3.5 sm:p-4 border border-[#c3c6d7]/40 shadow-sm flex items-center gap-3.5 hover:border-[#004ac6]/30 transition-colors">
+          <div className="h-9 w-9 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center">
+            <UserX className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-xs text-[#505f76] font-semibold">Inactive (Page)</p>
-            <p className="text-2xl font-bold text-[#131b2e] tracking-tight">{users.length - activeCount}</p>
+            <p className="text-[11px] text-[#505f76] font-semibold">Inactive (Page)</p>
+            <p className="text-xl font-bold text-[#131b2e] tracking-tight">{users.length - activeCount}</p>
           </div>
         </div>
       </div>
@@ -653,13 +653,13 @@ export default function UserManagementPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#faf8ff] border-b border-[#c3c6d7]/35 text-xs font-semibold text-[#505f76] uppercase tracking-wider">
-                  <th className="px-6 py-4">User Details</th>
-                  <th className="px-6 py-4">System Role</th>
-                  <th className="px-6 py-4">Class / Grade</th>
-                  <th className="px-6 py-4">Account Status</th>
-                  <th className="px-6 py-4">Company / School</th>
-                  <th className="px-6 py-4">Created Date</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th className="px-4 py-3">User Details</th>
+                  <th className="px-4 py-3">System Role</th>
+                  <th className="px-4 py-3">Class / Grade</th>
+                  <th className="px-4 py-3">Account Status</th>
+                  <th className="px-4 py-3">Company / School</th>
+                  <th className="px-4 py-3">Created Date</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#c3c6d7]/20 text-sm">
@@ -668,7 +668,7 @@ export default function UserManagementPage() {
                   const classNameVal = user.className || user.classEntity?.name || (user.classId ? `Class ${user.classId}` : null);
                   return (
                     <tr key={user.id} className="hover:bg-[#faf8ff]/50 transition-colors">
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-full bg-[#004ac6]/10 text-[#004ac6] border border-[#004ac6]/15 flex items-center justify-center font-bold text-sm">
                             {user.fullName.charAt(0).toUpperCase()}
@@ -680,7 +680,7 @@ export default function UserManagementPage() {
                         </div>
                       </td>
 
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase ${user.role?.toLowerCase() === "admin"
                             ? "bg-indigo-100 border border-indigo-200 text-indigo-700"
                             : user.role?.toLowerCase() === "teacher"
@@ -694,7 +694,7 @@ export default function UserManagementPage() {
                       </td>
 
                       {/* Class / Grade Column */}
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         {classNameVal ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#eaedff] text-[#004ac6] border border-[#004ac6]/20">
                             <GraduationCap className="h-3.5 w-3.5" />
@@ -705,7 +705,7 @@ export default function UserManagementPage() {
                         )}
                       </td>
 
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         <button
                           onClick={() => handleToggleStatus(user)}
                           className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${isActive
@@ -849,7 +849,7 @@ export default function UserManagementPage() {
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white border border-[#c3c6d7] rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl animate-in scale-in duration-200">
-            <div className="flex justify-between items-center bg-[#faf8ff] px-6 py-4 border-b border-[#c3c6d7]/35">
+            <div className="flex justify-between items-center bg-[#faf8ff] px-4 py-3 border-b border-[#c3c6d7]/35">
               <div className="flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-[#004ac6]" />
                 <h3 className="font-bold text-[#131b2e] text-base">Create New User Account</h3>
@@ -862,7 +862,7 @@ export default function UserManagementPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+            <form onSubmit={handleCreateUser} className="p-4 space-y-3.5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-[#131b2e]">Full Name *</label>
@@ -1001,7 +1001,7 @@ export default function UserManagementPage() {
       {editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white border border-[#c3c6d7] rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl animate-in scale-in duration-200">
-            <div className="flex justify-between items-center bg-[#faf8ff] px-6 py-4 border-b border-[#c3c6d7]/35">
+            <div className="flex justify-between items-center bg-[#faf8ff] px-4 py-3 border-b border-[#c3c6d7]/35">
               <div className="flex items-center gap-2">
                 <Edit2 className="h-5 w-5 text-[#004ac6]" />
                 <h3 className="font-bold text-[#131b2e] text-base">Edit User Profile & Role</h3>
@@ -1014,7 +1014,7 @@ export default function UserManagementPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+            <form onSubmit={handleSaveEdit} className="p-4 space-y-3.5">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-[#131b2e]">Full Name</label>
                 <Input
@@ -1120,7 +1120,7 @@ export default function UserManagementPage() {
       {resettingPasswordUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white border border-[#c3c6d7] rounded-2xl max-w-md w-full overflow-hidden shadow-2xl animate-in scale-in duration-200">
-            <div className="flex justify-between items-center bg-[#faf8ff] px-6 py-4 border-b border-[#c3c6d7]/35">
+            <div className="flex justify-between items-center bg-[#faf8ff] px-4 py-3 border-b border-[#c3c6d7]/35">
               <div className="flex items-center gap-2">
                 <KeyRound className="h-5 w-5 text-amber-600" />
                 <h3 className="font-bold text-[#131b2e] text-base">Reset User Password</h3>
@@ -1133,7 +1133,7 @@ export default function UserManagementPage() {
               </button>
             </div>
 
-            <form onSubmit={handleResetPassword} className="p-6 space-y-4">
+            <form onSubmit={handleResetPassword} className="p-4 space-y-3.5">
               <p className="text-xs text-[#505f76]">
                 Set a new password for <span className="font-bold text-[#131b2e]">{resettingPasswordUser.fullName}</span> ({resettingPasswordUser.email}).
               </p>
@@ -1182,7 +1182,7 @@ export default function UserManagementPage() {
       {deletingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white border border-[#c3c6d7] rounded-2xl max-w-md w-full overflow-hidden shadow-2xl animate-in scale-in duration-200">
-            <div className="flex justify-between items-center bg-rose-50 px-6 py-4 border-b border-rose-200">
+            <div className="flex justify-between items-center bg-rose-50 px-4 py-3 border-b border-rose-200">
               <div className="flex items-center gap-2">
                 <Trash2 className="h-5 w-5 text-rose-600" />
                 <h3 className="font-bold text-rose-900 text-base">Delete User Account</h3>
@@ -1195,7 +1195,7 @@ export default function UserManagementPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-4 space-y-3.5">
               <p className="text-sm text-[#505f76] leading-relaxed">
                 Are you sure you want to delete <span className="font-bold text-[#131b2e]">{deletingUser.fullName}</span> ({deletingUser.email})? This action will permanently remove their access and session data.
               </p>
@@ -1224,7 +1224,7 @@ export default function UserManagementPage() {
       {selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white border border-[#c3c6d7] rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl animate-in scale-in duration-200">
-            <div className="flex justify-between items-center bg-[#faf8ff] px-6 py-4 border-b border-[#c3c6d7]/35">
+            <div className="flex justify-between items-center bg-[#faf8ff] px-4 py-3 border-b border-[#c3c6d7]/35">
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-[#004ac6]" />
                 <h3 className="font-bold text-[#131b2e] text-base">Security & Session Profile</h3>
@@ -1237,7 +1237,7 @@ export default function UserManagementPage() {
               </button>
             </div>
 
-            <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
+            <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
               {/* Header profile cards */}
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-4 bg-[#eaedff]/30 rounded-xl border border-[#c3c6d7]/20">
                 <div className="flex items-center gap-3">
@@ -1312,7 +1312,7 @@ export default function UserManagementPage() {
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-[#faf8ff] border-t border-[#c3c6d7]/35 flex justify-end">
+            <div className="px-4 py-3 bg-[#faf8ff] border-t border-[#c3c6d7]/35 flex justify-end">
               <Button
                 onClick={() => setSelectedUser(null)}
                 className="bg-[#004ac6] hover:bg-[#004ac6]/90 text-white font-semibold shadow-sm"

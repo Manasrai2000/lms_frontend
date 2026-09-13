@@ -178,6 +178,10 @@ export default function FlipbookPage() {
           coverImage: b.coverImage || b.coverUrl,
         }));
         setBooks(normalized);
+        const queryBookId = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("bookId") : null;
+        if (queryBookId && normalized.some((b) => String(b.id) === String(queryBookId))) {
+          setSelectedBookId(String(queryBookId));
+        }
       }
     } catch (err) {
       console.error("Failed to fetch master data:", err);
@@ -407,9 +411,9 @@ export default function FlipbookPage() {
   const endIndex = Math.min(meta.page * meta.limit, meta.total);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 text-[#131b2e]">
+    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto pb-12 text-[#131b2e]">
       {/* 1. Header Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-white via-[#f0f4ff] to-[#e6eeff] p-6 sm:p-8 border border-[#c3c6d7]/40 shadow-sm backdrop-blur-md">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-white via-[#f0f4ff] to-[#e6eeff] p-4 md:p-5 border border-[#c3c6d7]/40 shadow-sm backdrop-blur-md">
         <div className="absolute right-0 top-0 -mr-12 -mt-12 h-64 w-64 rounded-full bg-[#004ac6]/5 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -598,7 +602,7 @@ export default function FlipbookPage() {
         /* Skeleton Loading */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white rounded-2xl border border-[#c3c6d7]/40 p-5 space-y-4 animate-pulse shadow-xs">
+            <div key={i} className="bg-white rounded-2xl border border-[#c3c6d7]/40 p-3.5 sm:p-4 space-y-3.5 animate-pulse shadow-xs">
               <div className="h-48 bg-zinc-200 rounded-xl" />
               <div className="h-4 w-3/4 bg-zinc-200 rounded" />
               <div className="h-3 w-1/2 bg-zinc-200 rounded" />
@@ -607,7 +611,7 @@ export default function FlipbookPage() {
         </div>
       ) : flipbooks.length === 0 ? (
         /* Empty State */
-        <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 p-12 text-center space-y-4 shadow-sm">
+        <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 p-4 md:p-5 text-center space-y-3 shadow-sm">
           <div className="h-16 w-16 rounded-2xl bg-[#eaedff] text-[#004ac6] flex items-center justify-center mx-auto">
             <BookCheck className="h-8 w-8" />
           </div>
@@ -687,7 +691,7 @@ export default function FlipbookPage() {
                 </div>
 
                 {/* Flipbook Metadata */}
-                <div className="p-5 space-y-3">
+                <div className="p-3.5 sm:p-4 space-y-2.5">
                   <div className="flex flex-wrap items-center gap-1.5">
                     {fb.bookTitle && (
                       <span className="px-2 py-0.5 rounded-md bg-[#eaedff] text-[#004ac6] text-[10px] font-extrabold border border-[#004ac6]/15">
@@ -766,23 +770,23 @@ export default function FlipbookPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#faf8ff] border-b border-[#c3c6d7]/30 text-[11px] font-extrabold uppercase tracking-wider text-[#505f76]">
-                  <th className="py-4 px-6">Code</th>
-                  <th className="py-4 px-6">Flipbook Title</th>
-                  <th className="py-4 px-6">Associated Book</th>
-                  <th className="py-4 px-6">Class & Subject</th>
-                  <th className="py-4 px-6 text-right">Actions</th>
+                  <th className="py-2.5 px-4">Code</th>
+                  <th className="py-2.5 px-4">Flipbook Title</th>
+                  <th className="py-2.5 px-4">Associated Book</th>
+                  <th className="py-2.5 px-4">Class & Subject</th>
+                  <th className="py-2.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#c3c6d7]/20 text-xs">
                 {flipbooks.map((fb) => (
                   <tr key={getFlipbookIdStr(fb)} className="hover:bg-[#f4f7ff]/60 transition-colors">
-                    <td className="py-4 px-6 font-mono font-bold">
+                    <td className="py-2.5 px-4 font-mono font-bold">
                       <span className="px-2.5 py-1 rounded-lg bg-[#eaedff] text-[#004ac6] border border-[#004ac6]/20">
                         {fb.code || `FB-${getFlipbookIdStr(fb)}`}
                       </span>
                     </td>
 
-                    <td className="py-4 px-6 max-w-sm">
+                    <td className="py-2.5 px-4 max-w-sm">
                       <p
                         onClick={() => setReadingFlipbook(fb)}
                         className="font-extrabold text-[#131b2e] hover:text-[#004ac6] transition-colors cursor-pointer text-sm"
@@ -794,15 +798,15 @@ export default function FlipbookPage() {
                       )}
                     </td>
 
-                    <td className="py-4 px-6 font-bold text-[#131b2e]">
+                    <td className="py-2.5 px-4 font-bold text-[#131b2e]">
                       {fb.bookTitle || "—"}
                     </td>
 
-                    <td className="py-4 px-6 text-xs font-semibold text-[#505f76]">
+                    <td className="py-2.5 px-4 text-xs font-semibold text-[#505f76]">
                       {fb.className} • {fb.subjectName}
                     </td>
 
-                    <td className="py-4 px-6 text-right">
+                    <td className="py-2.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
@@ -900,10 +904,10 @@ export default function FlipbookPage() {
 
       {/* FULLSCREEN FLIPBOOK / PDF READER MODAL */}
       {readingFlipbook && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 text-white">
             {/* Reader Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950 shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-950 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-[#004ac6] text-white flex items-center justify-center font-bold">
                   <BookOpen className="h-5 w-5" />
@@ -946,7 +950,7 @@ export default function FlipbookPage() {
                   className="w-full h-full border-0"
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center space-y-3">
+                <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center space-y-3">
                   <FileText className="h-12 w-12 text-slate-500" />
                   <p className="text-sm font-bold text-slate-300">No Document File URL Configured</p>
                   <p className="text-xs text-slate-500 max-w-sm">
@@ -963,7 +967,7 @@ export default function FlipbookPage() {
       {isCreateEditOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between p-5 border-b border-[#c3c6d7]/30 bg-[#faf8ff]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#c3c6d7]/30 bg-[#faf8ff]">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center font-bold">
                   <BookCheck className="h-5 w-5" />
@@ -985,7 +989,7 @@ export default function FlipbookPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitForm} className="p-6 space-y-4">
+            <form onSubmit={handleSubmitForm} className="p-4 space-y-3.5">
               {/* Title (Required) */}
               <div>
                 <label className="block text-xs font-bold text-[#131b2e] mb-1">
@@ -1111,7 +1115,7 @@ export default function FlipbookPage() {
       {isDeleteOpen && flipbookToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="p-6 text-center space-y-4">
+            <div className="p-4 md:p-5 text-center space-y-3.5">
               <div className="h-12 w-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
                 <AlertTriangle className="h-6 w-6" />
               </div>

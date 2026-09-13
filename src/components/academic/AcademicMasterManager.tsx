@@ -481,9 +481,9 @@ export default function AcademicMasterManager({
   }, [availableBooks, bookSearchQuery]);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 text-[#131b2e]">
+    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto pb-12 text-[#131b2e]">
       {/* Dynamic Header Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-white via-[#f0f4ff] to-[#e6eeff] p-6 sm:p-8 border border-[#c3c6d7]/40 shadow-sm backdrop-blur-md">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-white via-[#f0f4ff] to-[#e6eeff] p-4 md:p-5 border border-[#c3c6d7]/40 shadow-sm backdrop-blur-md">
         <div className="absolute right-0 top-0 -mr-12 -mt-12 h-64 w-64 rounded-full bg-[#004ac6]/5 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -644,7 +644,7 @@ export default function AcademicMasterManager({
       <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-sm overflow-hidden">
         {isLoading ? (
           /* Loading Skeletons */
-          <div className="p-6 space-y-4">
+          <div className="p-4 space-y-3.5">
             <div className="h-10 bg-zinc-100 animate-pulse rounded-xl" />
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((idx) => (
@@ -662,7 +662,7 @@ export default function AcademicMasterManager({
           </div>
         ) : items.length === 0 ? (
           /* Empty State */
-          <div className="py-16 px-6 text-center space-y-3">
+          <div className="py-10 px-4 text-center space-y-3">
             <div className="h-16 w-16 rounded-2xl bg-[#eaedff] text-[#004ac6] flex items-center justify-center mx-auto shadow-inner">
               <IconComponent className="h-8 w-8" />
             </div>
@@ -704,11 +704,11 @@ export default function AcademicMasterManager({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#faf8ff] border-b border-[#c3c6d7]/30 text-[11px] font-extrabold uppercase tracking-wider text-[#505f76]">
-                  <th className="py-4 px-6">Code</th>
-                  <th className="py-4 px-6">Name & Description</th>
-                  <th className="py-4 px-6">Status</th>
-                  <th className="py-4 px-6">Linked Books</th>
-                  <th className="py-4 px-6 text-right">Actions</th>
+                  <th className="py-2.5 px-4">Code</th>
+                  <th className="py-2.5 px-4">Name & Description</th>
+                  <th className="py-2.5 px-4">Status</th>
+                  <th className="py-2.5 px-4">Linked Books</th>
+                  <th className="py-2.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#c3c6d7]/20 text-xs">
@@ -722,14 +722,14 @@ export default function AcademicMasterManager({
                       className="hover:bg-[#f4f7ff]/60 transition-colors group"
                     >
                       {/* Code Badge */}
-                      <td className="py-4 px-6 font-mono font-bold">
+                      <td className="py-2.5 px-4 font-mono font-bold">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#eaedff] text-[#004ac6] border border-[#004ac6]/20 shadow-2xs">
                           {item.code || `${codePrefix}-${itemId}`}
                         </span>
                       </td>
 
                       {/* Name & Description */}
-                      <td className="py-4 px-6 max-w-sm">
+                      <td className="py-2.5 px-4 max-w-sm">
                         <p className="font-extrabold text-[#131b2e] text-sm group-hover:text-[#004ac6] transition-colors">
                           {item.name}
                         </p>
@@ -743,7 +743,7 @@ export default function AcademicMasterManager({
                       </td>
 
                       {/* Status Badge */}
-                      <td className="py-4 px-6">
+                      <td className="py-2.5 px-4">
                         {item.isActive ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
@@ -758,7 +758,7 @@ export default function AcademicMasterManager({
                       </td>
 
                       {/* Linked Books Badge */}
-                      <td className="py-4 px-6">
+                      <td className="py-2.5 px-4">
                         <button
                           onClick={() => handleOpenLinkBooksModal(item)}
                           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 hover:bg-[#004ac6]/10 text-[#131b2e] hover:text-[#004ac6] border border-slate-200/80 transition-all font-semibold cursor-pointer group/badge"
@@ -770,7 +770,7 @@ export default function AcademicMasterManager({
                       </td>
 
                       {/* Actions Buttons */}
-                      <td className="py-4 px-6 text-right">
+                      <td className="py-2.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="ghost"
@@ -870,7 +870,7 @@ export default function AcademicMasterManager({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-[#c3c6d7]/30 bg-[#faf8ff]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#c3c6d7]/30 bg-[#faf8ff]">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center font-bold">
                   <IconComponent className="h-5 w-5" />
@@ -893,7 +893,7 @@ export default function AcademicMasterManager({
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmitForm} className="p-6 space-y-4">
+            <form onSubmit={handleSubmitForm} className="p-4 space-y-3.5">
               {/* Name (Required) */}
               <div>
                 <label className="block text-xs font-bold text-[#131b2e] mb-1.5">
@@ -998,10 +998,10 @@ export default function AcademicMasterManager({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-[#c3c6d7]/30 bg-[#faf8ff] shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#c3c6d7]/30 bg-[#faf8ff] shrink-0">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center font-bold">
-                  <BookMarked className="h-5 w-5" />
+                <div className="h-9 w-9 rounded-xl bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center font-bold">
+                  <BookMarked className="h-4 w-4" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -1026,7 +1026,7 @@ export default function AcademicMasterManager({
             </div>
 
             {/* Modal Content */}
-            <div className="p-5 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+            <div className="p-4 space-y-3.5 overflow-y-auto flex-1 custom-scrollbar">
               {/* Live Search & Quick Tools */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div className="relative w-full sm:w-72">
@@ -1186,7 +1186,7 @@ export default function AcademicMasterManager({
       {isDeleteOpen && itemToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="p-6 text-center space-y-4">
+            <div className="p-4 md:p-5 text-center space-y-3.5">
               <div className="h-12 w-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
                 <AlertTriangle className="h-6 w-6" />
               </div>

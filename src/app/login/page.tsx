@@ -10,7 +10,7 @@ import api, { saveNewTokens } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { KeyRound, Mail, Sparkles, Loader2, LogOut, ArrowRight, User as UserIcon } from "lucide-react";
+import { KeyRound, Mail, Sparkles, Loader2, LogOut, ArrowRight, User as UserIcon, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
 const loginSchema = z.object({
@@ -25,6 +25,7 @@ export default function LoginPage() {
   const { user, isAuthenticated, clearAuth } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -149,11 +150,24 @@ export default function LoginPage() {
               <div className="relative">
                 <KeyRound className="absolute top-3 left-3 h-4.5 w-4.5 text-[#505f76]" />
                 <Input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  className="pl-10 bg-[#faf8ff] border-[#c3c6d7]/70 text-[#131b2e] placeholder:text-zinc-400 focus:border-[#004ac6]/50"
+                  className="pl-10 pr-10 bg-[#faf8ff] border-[#c3c6d7]/70 text-[#131b2e] placeholder:text-zinc-400 focus:border-[#004ac6]/50"
                   {...register("password")}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute top-2.5 right-3 text-[#505f76] hover:text-[#131b2e] transition-colors cursor-pointer p-0.5 rounded focus:outline-hidden"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4.5 w-4.5" />
+                  ) : (
+                    <Eye className="h-4.5 w-4.5" />
+                  )}
+                </button>
               </div>
               {errors.password && (
                 <p className="text-xs font-medium text-destructive mt-1">

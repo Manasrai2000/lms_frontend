@@ -569,7 +569,7 @@ export default function DashboardLayout({
       {/* Main Workspace */}
       <div className="flex-1 flex flex-col min-w-0 bg-[#faf8ff] overflow-hidden">
         {/* Top Navbar */}
-        <header className="h-16 border-b border-[#c3c6d7]/30 bg-white flex items-center justify-between px-6 shrink-0 shadow-sm">
+        <header className="h-16 border-b border-[#c3c6d7]/30 bg-white flex items-center justify-between px-4 shrink-0 shadow-sm">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsMobileOpen(true)}
@@ -658,7 +658,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Viewport Content */}
-        <main className="flex-1 overflow-y-auto p-6 bg-[#faf8ff] custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#faf8ff] custom-scrollbar">
           {children}
         </main>
       </div>

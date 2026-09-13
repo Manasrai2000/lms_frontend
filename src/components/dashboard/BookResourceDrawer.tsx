@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import api from "@/lib/api";
+import { useAuthStore } from "@/lib/store/auth";
 import {
   X,
   BookOpen,
@@ -33,9 +35,122 @@ export default function BookResourceDrawer({
   book,
   scannedCode,
 }: BookResourceDrawerProps) {
+  const { user } = useAuthStore();
+  const userRole = user?.role?.toLowerCase() || "";
+  const isStudent = userRole === "student";
+  const isTeacher = userRole === "teacher";
+  const isAdmin = userRole === "admin" || userRole === "superadmin";
+
+  // Dynamic Module Permissions from GET /auth/my-menu API
+  const [permittedRoutes, setPermittedRoutes] = useState<string[] | null>(null);
+  const [permittedKeys, setPermittedKeys] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    let isSubscribed = true;
+
+    async function fetchMenuRoutes() {
+      try {
+        let resData: any = null;
+        try {
+          const res = await api.get("/auth/my-menu");
+          resData = res.data?.data || res.data;
+        } catch {
+          const res = await api.get("/v1/auth/my-menu");
+          resData = res.data?.data || res.data;
+        }
+
+        if (isSubscribed && resData && Array.isArray(resData.menus)) {
+          const routes: string[] = [];
+          const keys: string[] = [];
+          const extractRoutes = (items: any[]) => {
+            for (const item of items) {
+              const p = item.route || item.path;
+              if (p && typeof p === "string") {
+                routes.push(p.toLowerCase().replace(/\/+$/, "").trim());
+              }
+              if (item.key && typeof item.key === "string") {
+                keys.push(item.key.toLowerCase().trim());
+              }
+              const subs = item.children || item.subItems;
+              if (Array.isArray(subs)) {
+                extractRoutes(subs);
+              }
+            }
+          };
+          extractRoutes(resData.menus);
+          setPermittedRoutes(routes);
+          setPermittedKeys(keys);
+        }
+      } catch {
+        // Fallback to role-based filtering if dynamic menu endpoint is not available
+      }
+    }
+
+    fetchMenuRoutes();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, []);
+
+  const canAccessModule = (routePath: string, key?: string): boolean => {
+    const cleanPath = routePath.split("?")[0].toLowerCase().replace(/\/+$/, "").trim();
+
+    // 1. Dynamic check from /auth/my-menu if backend returned allowed routes
+    if (permittedRoutes && permittedRoutes.length > 0) {
+      if (permittedRoutes.includes(cleanPath)) {
+        return true;
+      }
+      if (key && permittedKeys && permittedKeys.includes(key.toLowerCase().trim())) {
+        return true;
+      }
+      return false;
+    }
+
+    // 2. Fallback based on user role when dynamic menu is pending or offline
+    if (isStudent) {
+      // Per student menu schema: ONLY flipbook, videos, worksheets. NO chapters, NO teacher-manual, NO lesson-planner!
+      const studentAllowed = [
+        "/dashboard/books/flipbook",
+        "/dashboard/books/videos",
+        "/dashboard/books/worksheets",
+      ];
+      return studentAllowed.includes(cleanPath);
+    }
+
+    if (isTeacher) {
+      // Teachers: Access chapters, flipbook, videos, worksheets, teacher-manual, lesson-planner.
+      const teacherAllowed = [
+        "/dashboard/books/chapters",
+        "/dashboard/books/flipbook",
+        "/dashboard/books/videos",
+        "/dashboard/books/worksheets",
+        "/dashboard/books/teacher-manual",
+        "/dashboard/books/lesson-planner",
+      ];
+      return teacherAllowed.includes(cleanPath);
+    }
+
+    // Admin & Superadmin have full access
+    return true;
+  };
+
   const [activeTab, setActiveTab] = useState<"flipbook" | "worksheet" | "videos" | "overview">("overview");
   const [activeVideo, setActiveVideo] = useState<QRVideo | null>(null);
   const [isIframeFullscreen, setIsIframeFullscreen] = useState(false);
+
+  // Auto-switch to overview if the currently selected tab is not permitted
+  useEffect(() => {
+    if (activeTab === "flipbook" && !canAccessModule("/dashboard/books/flipbook", "flipbooks")) {
+      setActiveTab("overview");
+    }
+    if (activeTab === "worksheet" && !canAccessModule("/dashboard/books/worksheets", "worksheets")) {
+      setActiveTab("overview");
+    }
+    if (activeTab === "videos" && !canAccessModule("/dashboard/books/videos", "videos")) {
+      setActiveTab("overview");
+    }
+  }, [activeTab, permittedRoutes, permittedKeys]);
 
   if (!isOpen || !book) return null;
 
@@ -85,7 +200,7 @@ export default function BookResourceDrawer({
         </div>
 
         {/* Book Hero Showcase Banner */}
-        <div className="bg-gradient-to-r from-[#dbe1ff]/60 via-[#faf8ff] to-white p-6 border-b border-[#c3c6d7]/30 shrink-0">
+        <div className="bg-gradient-to-r from-[#dbe1ff]/60 via-[#faf8ff] to-white p-4 md:p-5 border-b border-[#c3c6d7]/30 shrink-0">
           <div className="flex gap-4 items-start">
             {/* Cover Image */}
             <div className="h-28 w-20 shrink-0 rounded-xl bg-white border border-[#c3c6d7]/40 shadow-sm overflow-hidden flex items-center justify-center relative">
@@ -134,9 +249,15 @@ export default function BookResourceDrawer({
               )}
 
               <div className="text-[11px] text-[#505f76] flex items-center gap-3 pt-1">
-                <span>📚 <b>{book.chaptersCount || 0}</b> Chapters</span>
-                <span>🎥 <b>{videosList.length}</b> Video Lessons</span>
-                <span>📝 <b>{worksheet ? "1" : "0"}</b> Worksheet</span>
+                {canAccessModule("/dashboard/books/chapters", "chapters") && (
+                  <span>📚 <b>{book.chaptersCount || 0}</b> Chapters</span>
+                )}
+                {canAccessModule("/dashboard/books/videos", "videos") && (
+                  <span>🎥 <b>{videosList.length}</b> Video Lessons</span>
+                )}
+                {canAccessModule("/dashboard/books/worksheets", "worksheets") && (
+                  <span>📝 <b>{worksheet ? "1" : "0"}</b> Worksheet</span>
+                )}
               </div>
             </div>
           </div>
@@ -155,51 +276,57 @@ export default function BookResourceDrawer({
               Overview
             </button>
 
-            <button
-              onClick={() => { setActiveTab("flipbook"); setActiveVideo(null); }}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
-                activeTab === "flipbook"
-                  ? "bg-[#004ac6] text-white shadow-sm"
-                  : "bg-white text-[#505f76] hover:bg-[#eaedff] hover:text-[#004ac6] border border-[#c3c6d7]/30"
-              }`}
-            >
-              <FileText className="h-3.5 w-3.5" />
-              Digital Flipbook {primaryFlipbook && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
-            </button>
+            {canAccessModule("/dashboard/books/flipbook", "flipbooks") && (
+              <button
+                onClick={() => { setActiveTab("flipbook"); setActiveVideo(null); }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                  activeTab === "flipbook"
+                    ? "bg-[#004ac6] text-white shadow-sm"
+                    : "bg-white text-[#505f76] hover:bg-[#eaedff] hover:text-[#004ac6] border border-[#c3c6d7]/30"
+                }`}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Digital Flipbook {primaryFlipbook && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+              </button>
+            )}
 
-            <button
-              onClick={() => { setActiveTab("worksheet"); setActiveVideo(null); }}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
-                activeTab === "worksheet"
-                  ? "bg-[#004ac6] text-white shadow-sm"
-                  : "bg-white text-[#505f76] hover:bg-[#eaedff] hover:text-[#004ac6] border border-[#c3c6d7]/30"
-              }`}
-            >
-              <Download className="h-3.5 w-3.5" />
-              Worksheet {worksheet && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
-            </button>
+            {canAccessModule("/dashboard/books/worksheets", "worksheets") && (
+              <button
+                onClick={() => { setActiveTab("worksheet"); setActiveVideo(null); }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                  activeTab === "worksheet"
+                    ? "bg-[#004ac6] text-white shadow-sm"
+                    : "bg-white text-[#505f76] hover:bg-[#eaedff] hover:text-[#004ac6] border border-[#c3c6d7]/30"
+                }`}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Worksheet {worksheet && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+              </button>
+            )}
 
-            <button
-              onClick={() => { 
-                setActiveTab("videos"); 
-                if (videosList.length > 0 && !activeVideo) {
-                  setActiveVideo(videosList[0]);
-                }
-              }}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
-                activeTab === "videos"
-                  ? "bg-[#004ac6] text-white shadow-sm"
-                  : "bg-white text-[#505f76] hover:bg-[#eaedff] hover:text-[#004ac6] border border-[#c3c6d7]/30"
-              }`}
-            >
-              <Video className="h-3.5 w-3.5" />
-              Video Lessons ({videosList.length})
-            </button>
+            {canAccessModule("/dashboard/books/videos", "videos") && (
+              <button
+                onClick={() => { 
+                  setActiveTab("videos"); 
+                  if (videosList.length > 0 && !activeVideo) {
+                    setActiveVideo(videosList[0]);
+                  }
+                }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                  activeTab === "videos"
+                    ? "bg-[#004ac6] text-white shadow-sm"
+                    : "bg-white text-[#505f76] hover:bg-[#eaedff] hover:text-[#004ac6] border border-[#c3c6d7]/30"
+                }`}
+              >
+                <Video className="h-3.5 w-3.5" />
+                Video Lessons ({videosList.length})
+              </button>
+            )}
           </div>
         </div>
 
         {/* Tab Contents Viewport */}
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
           {/* TAB 1: OVERVIEW */}
           {activeTab === "overview" && (
             <div className="space-y-4">
@@ -207,124 +334,172 @@ export default function BookResourceDrawer({
                 Quick Resource Access
               </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Flipbook Card */}
-                <div
-                  onClick={() => {
-                    if (primaryFlipbook) {
-                      setActiveTab("flipbook");
-                    }
-                  }}
-                  className={`p-4 rounded-2xl border transition-all ${
-                    primaryFlipbook
-                      ? "bg-white border-[#c3c6d7]/40 hover:border-[#004ac6] hover:shadow-md cursor-pointer group"
-                      : "bg-zinc-50 border-zinc-200 opacity-70 cursor-not-allowed"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="h-9 w-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-                      <BookOpen className="h-5 w-5" />
-                    </div>
-                    {primaryFlipbook ? (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        Available
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-zinc-400">Unavailable</span>
-                    )}
+              {(() => {
+                const resourceCards = [
+                  {
+                    id: "flipbook",
+                    key: "flipbooks",
+                    path: "/dashboard/books/flipbook",
+                    title: "Digital Flipbook",
+                    description: "Read high-resolution interactive pages with page turn effect.",
+                    icon: BookOpen,
+                    iconBg: "bg-indigo-50 text-indigo-600",
+                    badge: primaryFlipbook ? "Available" : "Unavailable",
+                    badgeStyle: primaryFlipbook
+                      ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                      : "text-zinc-400 bg-zinc-50 border-zinc-200",
+                    isAvailable: Boolean(primaryFlipbook),
+                    actionType: "tab" as const,
+                    tab: "flipbook" as const,
+                  },
+                  {
+                    id: "worksheet",
+                    key: "worksheets",
+                    path: "/dashboard/books/worksheets",
+                    title: "Practice Worksheet",
+                    description: "Download homework exercises, worksheets and review questions.",
+                    icon: Download,
+                    iconBg: "bg-amber-50 text-amber-600",
+                    badge: worksheet ? "PDF Ready" : "No Worksheet",
+                    badgeStyle: worksheet
+                      ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                      : "text-zinc-400 bg-zinc-50 border-zinc-200",
+                    isAvailable: Boolean(worksheet),
+                    actionType: "tab" as const,
+                    tab: "worksheet" as const,
+                  },
+                  {
+                    id: "videos",
+                    key: "videos",
+                    path: "/dashboard/books/videos",
+                    title: "Video Lectures",
+                    description: "Watch teacher explanations and chapter-wise animated concepts.",
+                    icon: Video,
+                    iconBg: "bg-rose-50 text-rose-600",
+                    badge: `${videosList.length} Lessons`,
+                    badgeStyle: "text-rose-700 bg-rose-50 border-rose-200",
+                    isAvailable: videosList.length > 0,
+                    actionType: "tab" as const,
+                    tab: "videos" as const,
+                  },
+                  {
+                    id: "chapters",
+                    key: "chapters",
+                    path: "/dashboard/books/chapters",
+                    title: "Curriculum & Chapters",
+                    description: "Browse chapter list, topics, syllabus and reading plans.",
+                    icon: Layers,
+                    iconBg: "bg-emerald-50 text-emerald-600",
+                    badge: `${book.chaptersCount || 0} Chapters`,
+                    badgeStyle: "text-emerald-700 bg-emerald-50 border-emerald-200",
+                    isAvailable: true,
+                    actionType: "link" as const,
+                    href: `/dashboard/books/chapters?bookId=${book.id}`,
+                  },
+                ];
+
+                const visibleCards = resourceCards.filter((card) =>
+                  canAccessModule(card.path, card.key)
+                );
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {visibleCards.map((card) => {
+                      const Icon = card.icon;
+
+                      if (card.actionType === "link" && card.href) {
+                        return (
+                          <Link
+                            key={card.id}
+                            href={card.href}
+                            onClick={onClose}
+                            className="p-4 rounded-2xl border bg-white border-[#c3c6d7]/40 hover:border-[#004ac6] hover:shadow-md transition-all group block"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className={`h-9 w-9 rounded-xl ${card.iconBg} flex items-center justify-center font-bold`}>
+                                <Icon className="h-5 w-5" />
+                              </div>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${card.badgeStyle}`}>
+                                {card.badge}
+                              </span>
+                            </div>
+                            <h4 className="text-sm font-bold text-[#131b2e] group-hover:text-[#004ac6] flex items-center justify-between">
+                              <span>{card.title}</span>
+                              <ChevronRight className="h-4 w-4 text-zinc-400 group-hover:text-[#004ac6]" />
+                            </h4>
+                            <p className="text-xs text-[#505f76] mt-1">{card.description}</p>
+                          </Link>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={card.id}
+                          onClick={() => {
+                            if (card.isAvailable && card.tab) {
+                              setActiveTab(card.tab);
+                              if (card.tab === "videos" && videosList.length > 0) {
+                                setActiveVideo(videosList[0]);
+                              }
+                            }
+                          }}
+                          className={`p-4 rounded-2xl border transition-all ${
+                            card.isAvailable
+                              ? "bg-white border-[#c3c6d7]/40 hover:border-[#004ac6] hover:shadow-md cursor-pointer group"
+                              : "bg-zinc-50 border-zinc-200 opacity-70 cursor-not-allowed"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className={`h-9 w-9 rounded-xl ${card.iconBg} flex items-center justify-center font-bold`}>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${card.badgeStyle}`}>
+                              {card.badge}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-bold text-[#131b2e] group-hover:text-[#004ac6]">{card.title}</h4>
+                          <p className="text-xs text-[#505f76] mt-1">{card.description}</p>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <h4 className="text-sm font-bold text-[#131b2e] group-hover:text-[#004ac6]">Digital Flipbook</h4>
-                  <p className="text-xs text-[#505f76] mt-1">Read high-resolution interactive pages with page turn effect.</p>
+                );
+              })()}
+
+              {/* Direct Navigation Button */}
+              {canAccessModule("/dashboard/books/chapters", "chapters") ? (
+                <div className="pt-3">
+                  <Link
+                    href={`/dashboard/books/chapters?bookId=${book.id}`}
+                    onClick={onClose}
+                    className="w-full flex items-center justify-center gap-2 p-3.5 bg-[#004ac6] hover:bg-[#003899] text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
+                  >
+                    <BookMarked className="h-4 w-4" />
+                    <span>Open Chapters & Complete Syllabus &rarr;</span>
+                  </Link>
                 </div>
-
-                {/* Worksheet Card */}
-                <div
-                  onClick={() => {
-                    if (worksheet) {
-                      setActiveTab("worksheet");
-                    }
-                  }}
-                  className={`p-4 rounded-2xl border transition-all ${
-                    worksheet
-                      ? "bg-white border-[#c3c6d7]/40 hover:border-[#004ac6] hover:shadow-md cursor-pointer group"
-                      : "bg-zinc-50 border-zinc-200 opacity-70 cursor-not-allowed"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="h-9 w-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                      <Download className="h-5 w-5" />
-                    </div>
-                    {worksheet ? (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        PDF Ready
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-zinc-400">No Worksheet</span>
-                    )}
-                  </div>
-                  <h4 className="text-sm font-bold text-[#131b2e] group-hover:text-[#004ac6]">Practice Worksheet</h4>
-                  <p className="text-xs text-[#505f76] mt-1">Download homework exercises, worksheets and review questions.</p>
+              ) : canAccessModule("/dashboard/books/flipbook", "flipbooks") && primaryFlipbook ? (
+                <div className="pt-3">
+                  <button
+                    onClick={() => setActiveTab("flipbook")}
+                    className="w-full flex items-center justify-center gap-2 p-3.5 bg-[#004ac6] hover:bg-[#003899] text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    <span>Open Digital Flipbook Reader &rarr;</span>
+                  </button>
                 </div>
-
-                {/* Video Lessons Card */}
-                <div
-                  onClick={() => {
-                    if (videosList.length > 0) {
-                      setActiveTab("videos");
-                      setActiveVideo(videosList[0]);
-                    }
-                  }}
-                  className={`p-4 rounded-2xl border transition-all ${
-                    videosList.length > 0
-                      ? "bg-white border-[#c3c6d7]/40 hover:border-[#004ac6] hover:shadow-md cursor-pointer group"
-                      : "bg-zinc-50 border-zinc-200 opacity-70 cursor-not-allowed"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
-                      <Video className="h-5 w-5" />
-                    </div>
-                    <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                      {videosList.length} Lessons
-                    </span>
-                  </div>
-                  <h4 className="text-sm font-bold text-[#131b2e] group-hover:text-[#004ac6]">Video Lectures</h4>
-                  <p className="text-xs text-[#505f76] mt-1">Watch teacher explanations and chapter-wise animated concepts.</p>
+              ) : (
+                <div className="pt-3">
+                  <Link
+                    href="/dashboard/books"
+                    onClick={onClose}
+                    className="w-full flex items-center justify-center gap-2 p-3.5 bg-[#004ac6] hover:bg-[#003899] text-white rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    <span>Explore All Textbooks &rarr;</span>
+                  </Link>
                 </div>
-
-                {/* Chapters Breakdown Card */}
-                <Link
-                  href={`/dashboard/books/chapters?bookId=${book.id}`}
-                  onClick={onClose}
-                  className="p-4 rounded-2xl border bg-white border-[#c3c6d7]/40 hover:border-[#004ac6] hover:shadow-md transition-all group block"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                      <Layers className="h-5 w-5" />
-                    </div>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      {book.chaptersCount || 0} Chapters
-                    </span>
-                  </div>
-                  <h4 className="text-sm font-bold text-[#131b2e] group-hover:text-[#004ac6] flex items-center justify-between">
-                    <span>Curriculum & Chapters</span>
-                    <ChevronRight className="h-4 w-4 text-zinc-400 group-hover:text-[#004ac6]" />
-                  </h4>
-                  <p className="text-xs text-[#505f76] mt-1">Browse chapter list, topics, syllabus and reading plans.</p>
-                </Link>
-              </div>
-
-              {/* Direct Full Book Navigation */}
-              <div className="pt-3">
-                <Link
-                  href={`/dashboard/books/chapters?bookId=${book.id}`}
-                  onClick={onClose}
-                  className="w-full flex items-center justify-center gap-2 p-3.5 bg-[#004ac6] hover:bg-[#003899] text-white rounded-xl font-bold text-xs shadow-md transition-all"
-                >
-                  <BookMarked className="h-4 w-4" />
-                  <span>Open Chapters & Complete Syllabus &rarr;</span>
-                </Link>
-              </div>
+              )}
             </div>
           )}
 

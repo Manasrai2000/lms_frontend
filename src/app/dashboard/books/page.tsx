@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import {
@@ -23,9 +24,22 @@ import {
   ChevronRight,
   BookMarked,
   CheckCircle2,
+  QrCode,
+  Sparkles,
+  Download,
+  Printer,
+  Copy,
+  Check,
+  ExternalLink,
+  Layers,
+  Video,
+  FileText,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/store/auth";
+import qrApi from "@/lib/api/qrcode";
+import { QRCodeItem } from "@/types/qrcode";
 
 export interface Book {
   id: number | string;
@@ -64,10 +78,117 @@ interface FilterOption {
 
 export default function BookLibraryPage() {
   const { user } = useAuthStore();
-  const isAdminOrTeacher =
-    user?.role?.toLowerCase() === "admin" ||
-    user?.role?.toLowerCase() === "teacher" ||
-    user?.role?.toLowerCase() === "superadmin";
+  const userRole = user?.role?.toLowerCase() || "";
+  const isStudent = userRole === "student";
+  const isTeacher = userRole === "teacher";
+  const isAdmin = userRole === "admin" || userRole === "superadmin";
+
+  const isAdminOrTeacher = isAdmin || isTeacher;
+
+  // Dynamic Module Permissions from GET /auth/my-menu API
+  const [permittedRoutes, setPermittedRoutes] = useState<string[] | null>(null);
+  const [permittedKeys, setPermittedKeys] = useState<string[] | null>(null);
+
+  // Can user access QR code operations (Only Admins or roles with explicit qr_code_management permissions)
+  const canAccessQr = Boolean(
+    !isStudent &&
+    (isAdmin ||
+      (permittedRoutes &&
+        (permittedRoutes.includes("/dashboard/qrcode") ||
+          permittedKeys?.includes("qr_code_management"))))
+  );
+
+  // Fetch Allowed Routes from GET /auth/my-menu API (with role fallback)
+  useEffect(() => {
+    let isSubscribed = true;
+
+    async function fetchMenuRoutes() {
+      try {
+        let resData: any = null;
+        try {
+          const res = await api.get("/auth/my-menu");
+          resData = res.data?.data || res.data;
+        } catch {
+          const res = await api.get("/v1/auth/my-menu");
+          resData = res.data?.data || res.data;
+        }
+
+        if (isSubscribed && resData && Array.isArray(resData.menus)) {
+          const routes: string[] = [];
+          const keys: string[] = [];
+          const extractRoutes = (items: any[]) => {
+            for (const item of items) {
+              const p = item.route || item.path;
+              if (p && typeof p === "string") {
+                routes.push(p.toLowerCase().replace(/\/+$/, "").trim());
+              }
+              if (item.key && typeof item.key === "string") {
+                keys.push(item.key.toLowerCase().trim());
+              }
+              const subs = item.children || item.subItems;
+              if (Array.isArray(subs)) {
+                extractRoutes(subs);
+              }
+            }
+          };
+          extractRoutes(resData.menus);
+          setPermittedRoutes(routes);
+          setPermittedKeys(keys);
+        }
+      } catch {
+        // Fallback to role-based filtering if dynamic menu endpoint is not available
+      }
+    }
+
+    fetchMenuRoutes();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, []);
+
+  // Helper to determine whether a module route button should be displayed in the sidebar
+  const canAccessModuleRoute = (routePath: string, key?: string): boolean => {
+    const cleanPath = routePath.split("?")[0].toLowerCase().replace(/\/+$/, "").trim();
+
+    // 1. Dynamic check from /auth/my-menu if backend returned allowed routes
+    if (permittedRoutes && permittedRoutes.length > 0) {
+      if (permittedRoutes.includes(cleanPath)) {
+        return true;
+      }
+      if (key && permittedKeys && permittedKeys.includes(key.toLowerCase().trim())) {
+        return true;
+      }
+      return false;
+    }
+
+    // 2. Fallback based on user role when dynamic menu is pending or offline
+    if (isStudent) {
+      // Per student menu schema: ONLY flipbook, videos, worksheets. NO chapters, NO teacher-manual, NO lesson-planner, NO qrcode!
+      const studentAllowed = [
+        "/dashboard/books/flipbook",
+        "/dashboard/books/videos",
+        "/dashboard/books/worksheets",
+      ];
+      return studentAllowed.includes(cleanPath);
+    }
+
+    if (isTeacher) {
+      // Teachers: Access chapters, flipbook, videos, worksheets, teacher-manual, lesson-planner. Block QR code.
+      const teacherAllowed = [
+        "/dashboard/books/chapters",
+        "/dashboard/books/flipbook",
+        "/dashboard/books/videos",
+        "/dashboard/books/worksheets",
+        "/dashboard/books/teacher-manual",
+        "/dashboard/books/lesson-planner",
+      ];
+      return teacherAllowed.includes(cleanPath);
+    }
+
+    // Admin & Superadmin have full access
+    return true;
+  };
 
   // Data States
   const [books, setBooks] = useState<Book[]>([]);
@@ -78,6 +199,12 @@ export default function BookLibraryPage() {
   // Loading States
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+  // Book QR Code States
+  const [bookQrMap, setBookQrMap] = useState<Record<string, QRCodeItem>>({});
+  const [selectedBookQr, setSelectedBookQr] = useState<{ book: Book; qr: QRCodeItem | null } | null>(null);
+  const [isGeneratingQr, setIsGeneratingQr] = useState<boolean>(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // View Mode: Grid or Table
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
@@ -260,13 +387,54 @@ export default function BookLibraryPage() {
     }
   };
 
+  // Fetch Book QR Codes mapping (strictly guarded for authorized roles)
+  const fetchBookQrs = async () => {
+    if (isStudent || !canAccessQr) return;
+    try {
+      const res = await qrApi.getList({ targetType: "BOOK", limit: 500 });
+      const items = res?.data || [];
+      const map: Record<string, QRCodeItem> = {};
+      items.forEach((item: QRCodeItem) => {
+        const bId = item.bookId || (item.book ? (item.book.id || (item.book as any)._id) : null);
+        if (bId) {
+          map[String(bId)] = item;
+        }
+      });
+      setBookQrMap(map);
+    } catch (err: any) {
+      // Gracefully handle 403 Forbidden or 401 Unauthorized without triggering dev console error overlays
+      if (err?.response?.status === 403 || err?.response?.status === 401) {
+        setBookQrMap({});
+        return;
+      }
+      console.warn("Could not load book QR codes mapping:", err?.message || err);
+    }
+  };
+
   useEffect(() => {
     fetchFilterMasters();
   }, []);
 
   useEffect(() => {
+    if (canAccessQr) {
+      fetchBookQrs();
+    }
+  }, [canAccessQr]);
+
+  useEffect(() => {
     fetchBooks();
   }, [currentPage, itemsPerPage, selectedClassId, selectedSubjectId, selectedLanguageId]);
+
+  // Handle ESC key to dismiss Right Sidebar Drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isViewDetailsOpen) {
+        setIsViewDetailsOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isViewDetailsOpen]);
 
   // Handle Search input enter or change
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -421,6 +589,86 @@ export default function BookLibraryPage() {
     }
   };
 
+  // Book QR Code Handlers
+  const handleOpenBookQrModal = (book: Book, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const bId = String(getBookId(book));
+    const existingQr = bookQrMap[bId] || null;
+    setSelectedBookQr({ book, qr: existingQr });
+  };
+
+  const handleGenerateBookQr = async (book: Book) => {
+    const bId = String(getBookId(book));
+    try {
+      setIsGeneratingQr(true);
+      const newQr = await qrApi.generateForBook(bId);
+      toast.success(`Book QR Code (${newQr.code}) generated successfully!`);
+      setBookQrMap((prev) => ({ ...prev, [bId]: newQr }));
+      setSelectedBookQr({ book, qr: newQr });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to generate book QR code");
+    } finally {
+      setIsGeneratingQr(false);
+    }
+  };
+
+  const handleCopyUrl = (code: string) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const publicUrl = `${origin}/q/${code}`;
+    navigator.clipboard.writeText(publicUrl);
+    setCopiedCode(code);
+    toast.success("Book QR Link copied to clipboard!");
+    setTimeout(() => setCopiedCode(null), 2500);
+  };
+
+  const handlePrintBookLabel = (item: QRCodeItem, book: Book) => {
+    const imageUrl = qrApi.getImageUrl(item.id, "png");
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Please allow popups to print QR label");
+      return;
+    }
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const publicUrl = `${origin}/q/${item.code}`;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Print Book QR Label - ${item.code}</title>
+          <style>
+            body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #fff; }
+            .label { border: 2px dashed #004ac6; padding: 24px; text-align: center; border-radius: 12px; max-width: 320px; }
+            .badge { display: inline-block; font-size: 10px; font-weight: 800; background: #eaedff; color: #004ac6; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; margin-bottom: 8px; }
+            .img-box { margin: 14px 0; }
+            .img-box img { width: 170px; height: 170px; }
+            .title { font-weight: bold; font-size: 15px; margin-bottom: 4px; color: #131b2e; }
+            .sub { font-size: 11px; color: #505f76; margin-bottom: 12px; }
+            .code { font-family: monospace; font-size: 13px; font-weight: bold; background: #eaedff; padding: 4px 8px; border-radius: 4px; color: #004ac6; }
+            .url { font-size: 9px; color: #888; margin-top: 8px; word-break: break-all; }
+          </style>
+        </head>
+        <body>
+          <div class="label">
+            <div class="badge">📖 Textbook QR</div>
+            <div class="title">${book.title}</div>
+            <div class="sub">${book.class ? `Class: ${book.class}` : ""} ${book.subject ? `| ${book.subject}` : ""}</div>
+            <div class="img-box">
+              <img src="${imageUrl}" alt="Book QR Code" />
+            </div>
+            <div class="code">${item.code}</div>
+            <div class="url">${publicUrl}</div>
+          </div>
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const isFilterActive =
     searchQuery !== "" ||
     selectedClassId !== "all" ||
@@ -431,9 +679,9 @@ export default function BookLibraryPage() {
   const endIndex = Math.min(meta.page * meta.limit, meta.total);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 text-[#131b2e]">
+    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto pb-12 text-[#131b2e]">
       {/* 1. Header Banner & Action Bar */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-white via-[#f0f4ff] to-[#e6eeff] p-6 sm:p-8 border border-[#c3c6d7]/40 shadow-sm backdrop-blur-md">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-white via-[#f0f4ff] to-[#e6eeff] p-4 md:p-5 border border-[#c3c6d7]/40 shadow-sm backdrop-blur-md">
         <div className="absolute right-0 top-0 -mr-12 -mt-12 h-64 w-64 rounded-full bg-[#004ac6]/5 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -485,7 +733,10 @@ export default function BookLibraryPage() {
 
             <Button
               variant="outline"
-              onClick={() => fetchBooks(true)}
+              onClick={() => {
+                fetchBooks(true);
+                fetchBookQrs();
+              }}
               disabled={isRefreshing || isLoading}
               className="border-[#c3c6d7] text-[#505f76] hover:bg-[#eaedff]/50 cursor-pointer h-10 px-3"
             >
@@ -738,6 +989,25 @@ export default function BookLibraryPage() {
 
                     {isAdminOrTeacher && (
                       <div className="flex items-center gap-1">
+                        {canAccessQr && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => handleOpenBookQrModal(book, e)}
+                            className={`h-7 w-7 p-0 rounded-lg cursor-pointer ${
+                              bookQrMap[String(bId)]
+                                ? "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                                : "text-slate-400 hover:text-[#004ac6] hover:bg-slate-100"
+                            }`}
+                            title={
+                              bookQrMap[String(bId)]
+                                ? `Book QR Code (${bookQrMap[String(bId)].code})`
+                                : "Generate / View Book QR Code"
+                            }
+                          >
+                            <QrCode className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -771,12 +1041,12 @@ export default function BookLibraryPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#faf8ff] border-b border-[#c3c6d7]/30 text-[11px] font-extrabold uppercase tracking-wider text-[#505f76]">
-                  <th className="py-4 px-6">Book</th>
-                  <th className="py-4 px-6">Code</th>
-                  <th className="py-4 px-6">Class</th>
-                  <th className="py-4 px-6">Subject</th>
-                  <th className="py-4 px-6">Language</th>
-                  <th className="py-4 px-6 text-right">Actions</th>
+                  <th className="py-2.5 px-4">Book</th>
+                  <th className="py-2.5 px-4">Code</th>
+                  <th className="py-2.5 px-4">Class</th>
+                  <th className="py-2.5 px-4">Subject</th>
+                  <th className="py-2.5 px-4">Language</th>
+                  <th className="py-2.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#c3c6d7]/20 text-xs">
@@ -787,7 +1057,7 @@ export default function BookLibraryPage() {
                   return (
                     <tr key={bId} className="hover:bg-[#f4f7ff]/60 transition-colors group">
                       {/* Title & Cover Thumbnail */}
-                      <td className="py-4 px-6 max-w-sm">
+                      <td className="py-2.5 px-4 max-w-sm">
                         <div className="flex items-center gap-3">
                           <div className="h-11 w-11 rounded-lg bg-[#faf8ff] border border-[#c3c6d7]/30 overflow-hidden shrink-0 flex items-center justify-center">
                             {!hasErr && book.coverImage ? (
@@ -813,14 +1083,14 @@ export default function BookLibraryPage() {
                       </td>
 
                       {/* Code */}
-                      <td className="py-4 px-6 font-mono font-bold">
+                      <td className="py-2.5 px-4 font-mono font-bold">
                         <span className="px-2 py-0.5 rounded bg-[#eaedff] text-[#004ac6] text-[11px]">
                           {book.code || `BK-${bId}`}
                         </span>
                       </td>
 
                       {/* Class Badge */}
-                      <td className="py-4 px-6">
+                      <td className="py-2.5 px-4">
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#eaedff] text-[#004ac6]">
                           <GraduationCap className="h-3 w-3" />
                           {book.class}
@@ -828,7 +1098,7 @@ export default function BookLibraryPage() {
                       </td>
 
                       {/* Subject Badge */}
-                      <td className="py-4 px-6">
+                      <td className="py-2.5 px-4">
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700">
                           <BookOpen className="h-3 w-3" />
                           {book.subject}
@@ -836,7 +1106,7 @@ export default function BookLibraryPage() {
                       </td>
 
                       {/* Language Badge */}
-                      <td className="py-4 px-6">
+                      <td className="py-2.5 px-4">
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
                           <Globe className="h-3 w-3" />
                           {book.language}
@@ -844,7 +1114,7 @@ export default function BookLibraryPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-6 text-right">
+                      <td className="py-2.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <Button
                             variant="ghost"
@@ -856,6 +1126,25 @@ export default function BookLibraryPage() {
                           </Button>
                           {isAdminOrTeacher && (
                             <>
+                              {canAccessQr && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => handleOpenBookQrModal(book, e)}
+                                  className={`h-8 w-8 p-0 rounded-lg cursor-pointer ${
+                                    bookQrMap[String(bId)]
+                                      ? "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                                      : "text-slate-400 hover:text-[#004ac6] hover:bg-slate-100"
+                                  }`}
+                                  title={
+                                    bookQrMap[String(bId)]
+                                      ? `Book QR Code (${bookQrMap[String(bId)].code})`
+                                      : "Generate / View Book QR Code"
+                                  }
+                                >
+                                  <QrCode className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -947,7 +1236,7 @@ export default function BookLibraryPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-[#c3c6d7]/30 bg-[#faf8ff]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#c3c6d7]/30 bg-[#faf8ff]">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center font-bold">
                   <BookOpen className="h-5 w-5" />
@@ -970,7 +1259,7 @@ export default function BookLibraryPage() {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmitBookForm} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+            <form onSubmit={handleSubmitBookForm} className="p-4 space-y-3.5 max-h-[75vh] overflow-y-auto custom-scrollbar">
               {/* Title (Required) */}
               <div>
                 <label className="block text-xs font-bold text-[#131b2e] mb-1">
@@ -1141,76 +1430,336 @@ export default function BookLibraryPage() {
         </div>
       )}
 
-      {/* MODAL 2: View Book Details Modal */}
+      {/* RIGHT SIDEBAR DRAWER: View Book Details & Content Resources */}
       {isViewDetailsOpen && viewingBook && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-[#c3c6d7]/30 bg-[#faf8ff]">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center font-bold">
-                  <BookMarked className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-extrabold text-[#131b2e]">Book Details</h2>
-                  <p className="text-xs text-[#505f76]">Full catalog record & metadata.</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsViewDetailsOpen(false)}
-                className="text-zinc-400 hover:text-zinc-600 p-1.5 rounded-lg hover:bg-zinc-100 cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          {/* Backdrop Click to Dismiss */}
+          <div
+            className="absolute inset-0"
+            onClick={() => setIsViewDetailsOpen(false)}
+          />
 
-            {/* Book Info Body */}
-            <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto custom-scrollbar">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 rounded-xl bg-[#faf8ff] border border-[#c3c6d7]/30">
-                <div className="h-32 w-24 bg-white border border-[#c3c6d7]/40 rounded-lg overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
-                  {viewingBook.coverImage ? (
-                    <img src={viewingBook.coverImage} alt={viewingBook.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <BookOpen className="h-8 w-8 text-[#004ac6]/30" />
-                  )}
-                </div>
-
-                <div className="space-y-1.5 text-center sm:text-left overflow-hidden">
-                  <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold bg-[#eaedff] text-[#004ac6]">
-                    {viewingBook.code || `BK-${getBookId(viewingBook)}`}
-                  </span>
-                  <h3 className="text-base font-extrabold text-[#131b2e] leading-snug">{viewingBook.title}</h3>
-                  <p className="text-xs text-[#505f76] font-medium leading-relaxed">
-                    {viewingBook.description || "No description recorded for this book."}
+          {/* Right Sidebar Container */}
+          <div className="relative w-full sm:w-[480px] md:w-[540px] max-w-full h-full bg-[#faf8ff] text-[#131b2e] shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-300 overflow-hidden border-l border-[#c3c6d7]/40">
+            {/* Drawer Header */}
+            <div className="bg-white border-b border-[#c3c6d7]/30 px-4 py-3 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="h-8 w-8 rounded-xl bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center font-black text-sm shrink-0">
+                  <BookOpen className="h-4.5 w-4.5" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-extrabold text-[#131b2e] leading-tight truncate">
+                    {viewingBook.title}
+                  </h2>
+                  <p className="text-[11px] text-[#505f76] flex items-center gap-1.5 font-medium mt-0.5">
+                    <span className="font-mono font-bold text-[#004ac6]">
+                      {viewingBook.code || `BK-${getBookId(viewingBook)}`}
+                    </span>
+                    <span>•</span>
+                    <span>Book Overview & Resources</span>
                   </p>
                 </div>
               </div>
 
-              {/* Metadata Badges Grid */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-center">
-                  <p className="text-[10px] font-bold text-[#505f76] uppercase">Class</p>
-                  <p className="text-xs font-black text-[#004ac6] mt-0.5">{viewingBook.class}</p>
-                </div>
-                <div className="bg-purple-50 p-3 rounded-xl border border-purple-200/80 text-center">
-                  <p className="text-[10px] font-bold text-purple-700 uppercase">Subject</p>
-                  <p className="text-xs font-black text-purple-800 mt-0.5">{viewingBook.subject}</p>
-                </div>
-                <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200/80 text-center">
-                  <p className="text-[10px] font-bold text-emerald-700 uppercase">Language</p>
-                  <p className="text-xs font-black text-emerald-800 mt-0.5">{viewingBook.language}</p>
-                </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => setIsViewDetailsOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500 hover:text-[#131b2e] transition-colors cursor-pointer"
+                  title="Close (Esc)"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-[#c3c6d7]/30 bg-[#faf8ff] flex items-center justify-between">
+            {/* Drawer Body (Scrollable) */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+              {/* Top Section: Book Details Card */}
+              <div className="bg-gradient-to-r from-[#eaedff]/60 via-[#faf8ff] to-white p-4 rounded-2xl border border-[#c3c6d7]/35 shadow-xs space-y-3">
+                <div className="flex gap-3.5 items-start">
+                  {/* Cover Image */}
+                  <div className="h-28 w-20 shrink-0 rounded-xl bg-white border border-[#c3c6d7]/40 shadow-sm overflow-hidden flex items-center justify-center relative">
+                    {viewingBook.coverImage ? (
+                      <img
+                        src={viewingBook.coverImage}
+                        alt={viewingBook.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="p-2 text-center flex flex-col items-center justify-center text-zinc-400">
+                        <BookMarked className="h-7 w-7 text-[#004ac6]/30 mb-1" />
+                        <span className="text-[9px] font-bold text-zinc-400">No Cover</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Meta Details */}
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex flex-wrap gap-1 items-center">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-[#004ac6] text-white px-2 py-0.5 rounded-full">
+                        <GraduationCap className="h-3 w-3" />
+                        {viewingBook.class}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full">
+                        <BookOpen className="h-3 w-3" />
+                        {viewingBook.subject}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        <Globe className="h-3 w-3" />
+                        {viewingBook.language}
+                      </span>
+                    </div>
+
+                    <h3 className="text-base font-extrabold text-[#131b2e] leading-snug">
+                      {viewingBook.title}
+                    </h3>
+
+                    <p className="text-xs text-[#505f76] font-medium leading-relaxed line-clamp-3">
+                      {viewingBook.description || "No description recorded for this textbook."}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Quick Info Bar */}
+                <div className="flex items-center justify-between pt-2 border-t border-[#c3c6d7]/30 text-[11px] text-[#505f76]">
+                  <span>
+                    Catalog Code: <strong className="font-mono text-[#004ac6]">{viewingBook.code || `BK-${getBookId(viewingBook)}`}</strong>
+                  </span>
+                  {canAccessQr && (
+                    bookQrMap[String(getBookId(viewingBook))] ? (
+                      <span className="inline-flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        <CheckCircle2 className="h-3 w-3" /> QR Active: {bookQrMap[String(getBookId(viewingBook))].code}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        <AlertTriangle className="h-3 w-3" /> No QR Code
+                      </span>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom Section: Dynamic Book Contents & Module Buttons */}
+              {(() => {
+                const bookModules = [
+                  {
+                    id: "chapters",
+                    key: "chapters",
+                    title: "Chapters & Syllabus Units",
+                    description: "Manage lessons, units, topics, and ordering",
+                    path: "/dashboard/books/chapters",
+                    icon: Layers,
+                    iconBg: "bg-indigo-50 text-indigo-600 border-indigo-100",
+                    isAction: false,
+                  },
+                  {
+                    id: "flipbook",
+                    key: "flipbooks",
+                    title: "Digital Flipbook (Interactive Reader)",
+                    description: "PDF e-reader with page-flipping digital animations",
+                    path: "/dashboard/books/flipbook",
+                    icon: BookOpen,
+                    iconBg: "bg-blue-50 text-blue-600 border-blue-100",
+                    isAction: false,
+                  },
+                  {
+                    id: "videos",
+                    key: "videos",
+                    title: "Video Lectures & Multimedia",
+                    description: "Curated video lessons, animations, and tutorials",
+                    path: "/dashboard/books/videos",
+                    icon: Video,
+                    iconBg: "bg-rose-50 text-rose-600 border-rose-100",
+                    isAction: false,
+                  },
+                  {
+                    id: "worksheets",
+                    key: "worksheets",
+                    title: "Practice Worksheets",
+                    description: "Printable exercise sheets and homework assessments",
+                    path: "/dashboard/books/worksheets",
+                    icon: FileText,
+                    iconBg: "bg-emerald-50 text-emerald-600 border-emerald-100",
+                    badge: viewingBook.worksheetUrl ? "PDF" : null,
+                    badgeStyle: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                    externalUrl: viewingBook.worksheetUrl,
+                    externalLabel: "Open Worksheet PDF",
+                    isAction: false,
+                  },
+                  {
+                    id: "teacher-manual",
+                    key: "teacher_manuals",
+                    title: "Teacher Manual",
+                    description: "Pedagogical guidelines, answer keys, and notes",
+                    path: "/dashboard/books/teacher-manual",
+                    icon: GraduationCap,
+                    iconBg: "bg-amber-50 text-amber-600 border-amber-100",
+                    badge: viewingBook.teacherManualUrl ? "Manual" : null,
+                    badgeStyle: "bg-amber-50 text-amber-700 border-amber-200",
+                    externalUrl: viewingBook.teacherManualUrl,
+                    externalLabel: "Open Teacher Manual",
+                    isAction: false,
+                  },
+                  {
+                    id: "lesson-planner",
+                    key: "lesson_planners",
+                    title: "Lesson Planner",
+                    description: "Period schedules, learning objectives, and pacing",
+                    path: "/dashboard/books/lesson-planner",
+                    icon: Calendar,
+                    iconBg: "bg-purple-50 text-purple-600 border-purple-100",
+                    badge: viewingBook.lessonPlannerUrl ? "Plan" : null,
+                    badgeStyle: "bg-purple-50 text-purple-700 border-purple-200",
+                    externalUrl: viewingBook.lessonPlannerUrl,
+                    externalLabel: "Open Lesson Planner",
+                    isAction: false,
+                  },
+                  {
+                    id: "qrcode",
+                    key: "qr_code_management",
+                    title: "Physical QR Code Sticker",
+                    description: bookQrMap[String(getBookId(viewingBook))]
+                      ? `Sticker (${bookQrMap[String(getBookId(viewingBook))].code}) • View, download or print`
+                      : "Generate unique cryptographic QR label for physical textbook",
+                    path: "/dashboard/qrcode",
+                    icon: QrCode,
+                    iconBg: "bg-indigo-100 text-indigo-700 border-indigo-200",
+                    badge: bookQrMap[String(getBookId(viewingBook))] ? "Active" : "Generate",
+                    badgeStyle: bookQrMap[String(getBookId(viewingBook))]
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200",
+                    isAction: true,
+                    action: () => {
+                      setIsViewDetailsOpen(false);
+                      handleOpenBookQrModal(viewingBook);
+                    },
+                  },
+                ];
+
+                const visibleModules = bookModules.filter((mod) =>
+                  canAccessModuleRoute(mod.path, mod.key)
+                );
+
+                return (
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between pt-1">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[#505f76]">
+                          Book Contents & Learning Modules
+                        </h4>
+                        <p className="text-[11px] text-[#505f76]">
+                          Access syllabus, interactive reader, worksheets, multimedia & schedules
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#eaedff] text-[#004ac6]">
+                        {visibleModules.length} Modules Available
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                      {visibleModules.map((mod) => {
+                        const Icon = mod.icon;
+
+                        if (mod.isAction) {
+                          return (
+                            <div
+                              key={mod.id}
+                              onClick={mod.action}
+                              className="group flex items-center justify-between p-3 rounded-xl bg-white hover:bg-indigo-50/40 border border-indigo-200/60 hover:border-indigo-400 shadow-2xs transition-all cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border group-hover:scale-105 transition-transform ${mod.iconBg}`}
+                                >
+                                  <Icon className="h-4.5 w-4.5" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-xs font-bold text-indigo-950 group-hover:text-indigo-700 transition-colors">
+                                      {mod.title}
+                                    </p>
+                                    {mod.badge && (
+                                      <span
+                                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${mod.badgeStyle}`}
+                                      >
+                                        {mod.badge}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-[#505f76]">{mod.description}</p>
+                                </div>
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-zinc-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all shrink-0" />
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={mod.id}
+                            className="group flex items-center justify-between p-3 rounded-xl bg-white hover:bg-[#faf8ff] border border-[#c3c6d7]/35 hover:border-[#004ac6]/40 hover:shadow-sm transition-all"
+                          >
+                            <Link
+                              href={`${mod.path}?bookId=${getBookId(viewingBook)}`}
+                              className="flex items-center gap-3 flex-1 min-w-0"
+                            >
+                              <div
+                                className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border group-hover:scale-105 transition-transform ${mod.iconBg}`}
+                              >
+                                <Icon className="h-4.5 w-4.5" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-xs font-bold text-[#131b2e] group-hover:text-[#004ac6] transition-colors truncate">
+                                    {mod.title}
+                                  </p>
+                                  {mod.badge && (
+                                    <span
+                                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${mod.badgeStyle}`}
+                                    >
+                                      {mod.badge}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-[#505f76] truncate">
+                                  {mod.description}
+                                </p>
+                              </div>
+                            </Link>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {mod.externalUrl && (
+                                <a
+                                  href={mod.externalUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`p-1.5 rounded-md border text-[10px] font-bold inline-flex items-center gap-1 ${mod.badgeStyle}`}
+                                  title={mod.externalLabel}
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                              )}
+                              <Link href={`${mod.path}?bookId=${getBookId(viewingBook)}`}>
+                                <ChevronRight className="h-4 w-4 text-zinc-400 group-hover:text-[#004ac6] group-hover:translate-x-0.5 transition-all" />
+                              </Link>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Drawer Sticky Footer */}
+            <div className="p-3.5 bg-[#faf8ff] border-t border-[#c3c6d7]/30 flex items-center justify-between shrink-0">
               <Button
                 variant="outline"
                 onClick={() => setIsViewDetailsOpen(false)}
-                className="border-[#c3c6d7] text-[#505f76] text-xs font-semibold cursor-pointer"
+                className="border-[#c3c6d7] text-[#505f76] text-xs font-semibold cursor-pointer h-9 px-4"
               >
-                Close
+                Close Sidebar
               </Button>
 
               {isAdminOrTeacher && (
@@ -1220,9 +1769,9 @@ export default function BookLibraryPage() {
                       setIsViewDetailsOpen(false);
                       handleOpenEditModal(viewingBook);
                     }}
-                    className="bg-[#004ac6] hover:bg-[#003cb0] text-white text-xs font-semibold shadow-md cursor-pointer"
+                    className="bg-[#004ac6] hover:bg-[#003cb0] text-white text-xs font-semibold shadow-md cursor-pointer h-9 px-4 flex items-center gap-1.5"
                   >
-                    <Edit3 className="h-3.5 w-3.5 mr-1.5" /> Edit Book
+                    <Edit3 className="h-3.5 w-3.5" /> Edit Book
                   </Button>
                 </div>
               )}
@@ -1235,7 +1784,7 @@ export default function BookLibraryPage() {
       {isDeleteOpen && bookToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="p-6 text-center space-y-4">
+            <div className="p-4 md:p-5 text-center space-y-3.5">
               <div className="h-12 w-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
                 <AlertTriangle className="h-6 w-6" />
               </div>
@@ -1264,6 +1813,216 @@ export default function BookLibraryPage() {
                   {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mx-auto" /> : "Yes, Delete"}
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: Book QR Code Preview & Generator Modal */}
+      {selectedBookQr && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-4 py-3 border-b border-[#c3c6d7]/30 flex items-center justify-between bg-[#faf8ff]">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                  <QrCode className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-[#131b2e]">Book QR Code</h3>
+                  <p className="text-[11px] text-[#505f76] truncate max-w-xs font-medium">
+                    {selectedBookQr.book.title}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedBookQr(null)}
+                className="h-8 w-8 rounded-full hover:bg-slate-200/60 flex items-center justify-center text-slate-500 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 space-y-3.5">
+              {selectedBookQr.qr ? (
+                /* QR EXISTS: Show Preview & Download Options */
+                <div className="space-y-4">
+                  {/* QR Image & Code Display */}
+                  <div className="flex flex-col items-center justify-center p-4 bg-[#f4f7ff]/70 rounded-2xl border border-[#004ac6]/15 text-center">
+                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-[#c3c6d7]/40 mb-3">
+                      <img
+                        src={qrApi.getImageUrl(selectedBookQr.qr.id, "png")}
+                        alt={`QR Code ${selectedBookQr.qr.code}`}
+                        className="w-44 h-44 object-contain rounded-lg"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-base font-black text-[#004ac6] tracking-wider bg-white px-3 py-1 rounded-lg border border-[#004ac6]/20 shadow-2xs">
+                        {selectedBookQr.qr.code}
+                      </span>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        Active
+                      </span>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
+                        📖 Textbook
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-[#505f76] mt-1 font-medium">
+                      Scan this code to instantly open textbook materials, flipbooks, and worksheets.
+                    </p>
+                  </div>
+
+                  {/* Book Context Card */}
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center gap-3">
+                    <div className="h-12 w-9 rounded-md bg-white border border-[#c3c6d7]/40 overflow-hidden shrink-0 flex items-center justify-center">
+                      {selectedBookQr.book.coverImage ? (
+                        <img
+                          src={selectedBookQr.book.coverImage}
+                          alt={selectedBookQr.book.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <BookOpen className="h-5 w-5 text-[#004ac6]/40" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-extrabold text-[#131b2e] truncate">
+                        {selectedBookQr.book.title}
+                      </p>
+                      <p className="text-[11px] text-[#505f76] truncate font-medium mt-0.5">
+                        {selectedBookQr.book.class ? `Class: ${selectedBookQr.book.class}` : ""}
+                        {selectedBookQr.book.subject ? ` | ${selectedBookQr.book.subject}` : ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Public Link Box */}
+                  <div className="flex items-center justify-between p-2.5 bg-slate-100 rounded-xl text-xs font-mono text-[#505f76] border border-slate-200">
+                    <span className="truncate mr-2">/q/{selectedBookQr.qr.code}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCopyUrl(selectedBookQr.qr!.code)}
+                      className="h-7 px-2 text-xs font-semibold text-[#004ac6] hover:bg-white cursor-pointer shrink-0"
+                    >
+                      {copiedCode === selectedBookQr.qr.code ? (
+                        <>
+                          <Check className="h-3 w-3 mr-1 text-emerald-600" /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3 mr-1" /> Copy Link
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Download & Print Buttons */}
+                  <div className="grid grid-cols-3 gap-2.5 pt-1">
+                    <a
+                      href={qrApi.getImageUrl(selectedBookQr.qr.id, "png", true)}
+                      download={`Book-QR-${selectedBookQr.qr.code}.png`}
+                      className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white border border-[#c3c6d7] text-xs font-bold text-[#131b2e] hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5 text-[#004ac6]" />
+                      <span>PNG</span>
+                    </a>
+
+                    <a
+                      href={qrApi.getImageUrl(selectedBookQr.qr.id, "svg", true)}
+                      download={`Book-QR-${selectedBookQr.qr.code}.svg`}
+                      className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white border border-[#c3c6d7] text-xs font-bold text-[#131b2e] hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5 text-purple-600" />
+                      <span>SVG</span>
+                    </a>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => handlePrintBookLabel(selectedBookQr.qr!, selectedBookQr.book)}
+                      className="flex items-center justify-center gap-1.5 h-auto py-2.5 px-3 rounded-xl border-[#c3c6d7] text-xs font-bold text-[#131b2e] hover:bg-slate-50 shadow-2xs cursor-pointer"
+                    >
+                      <Printer className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Print</span>
+                    </Button>
+                  </div>
+
+                  {/* Test Scan / Open Link */}
+                  <div className="pt-2 text-center">
+                    <a
+                      href={`/q/${selectedBookQr.qr.code}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#004ac6] hover:underline"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Test Scan Link (Open Student Portal)
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                /* NO QR: Prompt to Generate */
+                <div className="text-center py-4 space-y-4">
+                  <div className="h-16 w-16 rounded-3xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto border border-indigo-100 shadow-sm">
+                    <QrCode className="h-8 w-8" />
+                  </div>
+
+                  <div>
+                    <h4 className="font-extrabold text-base text-[#131b2e]">
+                      No QR Code for this Book
+                    </h4>
+                    <p className="text-xs text-[#505f76] mt-1 max-w-sm mx-auto font-medium">
+                      Generate a unique cryptographic QR sticker for <strong className="text-[#131b2e]">"{selectedBookQr.book.title}"</strong>.
+                      Students and teachers can scan it to access textbook resources instantly.
+                    </p>
+                  </div>
+
+                  {/* Book Preview Snippet */}
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-left flex items-center gap-3">
+                    <div className="h-12 w-9 rounded-md bg-white border border-[#c3c6d7]/40 overflow-hidden shrink-0 flex items-center justify-center">
+                      {selectedBookQr.book.coverImage ? (
+                        <img
+                          src={selectedBookQr.book.coverImage}
+                          alt={selectedBookQr.book.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <BookOpen className="h-5 w-5 text-[#004ac6]/40" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-extrabold text-[#131b2e] truncate">
+                        {selectedBookQr.book.title}
+                      </p>
+                      <p className="text-[11px] text-[#505f76] truncate font-medium mt-0.5">
+                        {selectedBookQr.book.class ? `Class: ${selectedBookQr.book.class}` : ""}
+                        {selectedBookQr.book.subject ? ` | ${selectedBookQr.book.subject}` : ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <Button
+                      onClick={() => handleGenerateBookQr(selectedBookQr.book)}
+                      disabled={isGeneratingQr}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md cursor-pointer gap-2"
+                    >
+                      {isGeneratingQr ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" /> Generating Book QR...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4" /> Generate Book QR Code
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

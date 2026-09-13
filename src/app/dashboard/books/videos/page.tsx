@@ -77,10 +77,12 @@ export interface VideoItem {
 
 export default function VideosPage() {
   const { user } = useAuthStore();
-  const isAdminOrTeacher =
-    user?.role?.toLowerCase() === "admin" ||
-    user?.role?.toLowerCase() === "teacher" ||
-    user?.role?.toLowerCase() === "superadmin";
+  const userRole = user?.role?.toLowerCase() || "";
+  const isStudent = userRole === "student";
+  const isAdmin = userRole === "admin" || userRole === "superadmin";
+  const isTeacher = userRole === "teacher";
+  const isAdminOrTeacher = isAdmin || isTeacher;
+  const canAccessQr = isAdmin;
 
   // Master Data & Dropdowns
   const [books, setBooks] = useState<BookOption[]>([]);
@@ -194,8 +196,9 @@ export default function VideosPage() {
       }));
 
       setBooks(normalized);
-      if (normalized.length > 0 && selectedBookId === "all") {
-        // Keep selectedBookId as 'all' or default
+      const queryBookId = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("bookId") : null;
+      if (queryBookId && normalized.some((b) => String(b.id) === String(queryBookId))) {
+        setSelectedBookId(String(queryBookId));
       }
     } catch (err) {
       console.error("Failed to fetch books options:", err);
@@ -330,26 +333,36 @@ export default function VideosPage() {
 
   // 3.1 Fetch Video QR Codes mapping
   const fetchVideoQrs = async () => {
+    if (isStudent || !canAccessQr) return;
     try {
       const res = await qrApi.getList({ targetType: "VIDEO", limit: 500 });
-      const items = res.data || [];
+      const items = res?.data || [];
       const map: Record<string, QRCodeItem> = {};
-      items.forEach((item) => {
+      items.forEach((item: QRCodeItem) => {
         const vId = item.videoId || (item.video ? (item.video.id || (item.video as any)._id) : null);
         if (vId) {
           map[String(vId)] = item;
         }
       });
       setVideoQrMap(map);
-    } catch (err) {
-      console.error("Failed to fetch video QR codes mapping:", err);
+    } catch (err: any) {
+      if (err?.response?.status === 403 || err?.response?.status === 401) {
+        setVideoQrMap({});
+        return;
+      }
+      console.warn("Could not load video QR codes mapping:", err?.message || err);
     }
   };
 
   useEffect(() => {
     fetchBooksOptions();
-    fetchVideoQrs();
   }, []);
+
+  useEffect(() => {
+    if (canAccessQr) {
+      fetchVideoQrs();
+    }
+  }, [canAccessQr]);
 
   useEffect(() => {
     if (selectedBookId && selectedBookId !== "all") {
@@ -631,9 +644,9 @@ export default function VideosPage() {
   const endIndex = Math.min(meta.page * meta.limit, meta.total);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 text-[#131b2e]">
+    <div className="space-y-4 md:space-y-5 max-w-7xl mx-auto pb-12 text-[#131b2e]">
       {/* 1. Header Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-white via-[#f0f4ff] to-[#e6eeff] p-6 sm:p-8 border border-[#c3c6d7]/40 shadow-sm backdrop-blur-md">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-white via-[#f0f4ff] to-[#e6eeff] p-4 md:p-5 border border-[#c3c6d7]/40 shadow-sm backdrop-blur-md">
         <div className="absolute right-0 top-0 -mr-12 -mt-12 h-64 w-64 rounded-full bg-[#004ac6]/5 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -904,7 +917,7 @@ export default function VideosPage() {
                 </div>
 
                 {/* Video Info Content */}
-                <div className="p-5 space-y-3">
+                <div className="p-3.5 sm:p-4 space-y-2.5">
                   <div className="flex flex-wrap items-center gap-1.5">
                     {v.bookTitle && (
                       <span className="px-2 py-0.5 rounded-md bg-[#eaedff] text-[#004ac6] text-[10px] font-extrabold border border-[#004ac6]/15">
@@ -970,23 +983,25 @@ export default function VideosPage() {
 
                   {isAdminOrTeacher && (
                     <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleOpenVideoQrModal(v)}
-                        className={`h-8 w-8 p-0 rounded-lg cursor-pointer ${
-                          videoQrMap[String(getVideoIdStr(v))]
-                            ? "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
-                            : "text-slate-400 hover:text-[#004ac6] hover:bg-slate-100"
-                        }`}
-                        title={
-                          videoQrMap[String(getVideoIdStr(v))]
-                            ? `Video QR Code (${videoQrMap[String(getVideoIdStr(v))].code})`
-                            : "Generate / View Video QR Code"
-                        }
-                      >
-                        <QrCode className="h-3.5 w-3.5" />
-                      </Button>
+                      {canAccessQr && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenVideoQrModal(v)}
+                          className={`h-8 w-8 p-0 rounded-lg cursor-pointer ${
+                            videoQrMap[String(getVideoIdStr(v))]
+                              ? "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                              : "text-slate-400 hover:text-[#004ac6] hover:bg-slate-100"
+                          }`}
+                          title={
+                            videoQrMap[String(getVideoIdStr(v))]
+                              ? `Video QR Code (${videoQrMap[String(getVideoIdStr(v))].code})`
+                              : "Generate / View Video QR Code"
+                          }
+                        >
+                          <QrCode className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1019,21 +1034,21 @@ export default function VideosPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#faf8ff] border-b border-[#c3c6d7]/30 text-[11px] font-extrabold uppercase tracking-wider text-[#505f76]">
-                  <th className="py-4 px-6 w-16">#</th>
-                  <th className="py-4 px-6">Thumbnail & Title</th>
-                  <th className="py-4 px-6">Book & Chapter</th>
-                  <th className="py-4 px-6">Duration</th>
-                  <th className="py-4 px-6 text-right">Actions</th>
+                  <th className="py-2.5 px-4 w-16">#</th>
+                  <th className="py-2.5 px-4">Thumbnail & Title</th>
+                  <th className="py-2.5 px-4">Book & Chapter</th>
+                  <th className="py-2.5 px-4">Duration</th>
+                  <th className="py-2.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#c3c6d7]/20 text-xs">
                 {videos.map((v, idx) => (
                   <tr key={getVideoIdStr(v)} className="hover:bg-[#f4f7ff]/60 transition-colors">
-                    <td className="py-4 px-6 font-bold text-[#505f76]">
+                    <td className="py-2.5 px-4 font-bold text-[#505f76]">
                       {idx + 1}
                     </td>
 
-                    <td className="py-4 px-6">
+                    <td className="py-2.5 px-4">
                       <div className="flex items-center gap-3">
                         <div
                           onClick={() => setPlayingVideo(v)}
@@ -1063,16 +1078,16 @@ export default function VideosPage() {
                       </div>
                     </td>
 
-                    <td className="py-4 px-6 space-y-1">
+                    <td className="py-2.5 px-4 space-y-1">
                       <p className="font-bold text-[#131b2e]">{v.bookTitle || "—"}</p>
                       <p className="text-xs text-[#505f76]">{v.chapterTitle || "—"}</p>
                     </td>
 
-                    <td className="py-4 px-6 font-semibold text-[#131b2e]">
+                    <td className="py-2.5 px-4 font-semibold text-[#131b2e]">
                       {v.duration || "10:00"}
                     </td>
 
-                    <td className="py-4 px-6 text-right">
+                    <td className="py-2.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
@@ -1085,23 +1100,25 @@ export default function VideosPage() {
 
                         {isAdminOrTeacher && (
                           <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleOpenVideoQrModal(v)}
-                              className={`h-8 w-8 p-0 rounded-lg cursor-pointer ${
-                                videoQrMap[String(getVideoIdStr(v))]
-                                  ? "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
-                                  : "text-slate-400 hover:text-[#004ac6] hover:bg-slate-100"
-                              }`}
-                              title={
-                                videoQrMap[String(getVideoIdStr(v))]
-                                  ? `Video QR Code (${videoQrMap[String(getVideoIdStr(v))].code})`
-                                  : "Generate / View Video QR Code"
-                              }
-                            >
-                              <QrCode className="h-3.5 w-3.5" />
-                            </Button>
+                            {canAccessQr && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenVideoQrModal(v)}
+                                className={`h-8 w-8 p-0 rounded-lg cursor-pointer ${
+                                  videoQrMap[String(getVideoIdStr(v))]
+                                    ? "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                                    : "text-slate-400 hover:text-[#004ac6] hover:bg-slate-100"
+                                }`}
+                                title={
+                                  videoQrMap[String(getVideoIdStr(v))]
+                                    ? `Video QR Code (${videoQrMap[String(getVideoIdStr(v))].code})`
+                                    : "Generate / View Video QR Code"
+                                }
+                              >
+                                <QrCode className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1217,7 +1234,7 @@ export default function VideosPage() {
                   className="w-full h-full border-0"
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center space-y-3 p-6 text-center">
+                <div className="w-full h-full flex flex-col items-center justify-center space-y-3 p-4 text-center">
                   <AlertTriangle className="h-10 w-10 text-amber-400" />
                   <p className="text-sm font-semibold">Invalid YouTube Video URL or Video ID</p>
                   <a
@@ -1234,7 +1251,7 @@ export default function VideosPage() {
 
             {/* Player Description Footer */}
             {playingVideo.description && (
-              <div className="p-6 bg-slate-900 border-t border-slate-800 text-xs text-slate-300 space-y-1">
+              <div className="p-4 bg-slate-900 border-t border-slate-800 text-xs text-slate-300 space-y-1">
                 <p className="font-bold text-slate-100">About this video:</p>
                 <p className="leading-relaxed">{playingVideo.description}</p>
               </div>
@@ -1247,7 +1264,7 @@ export default function VideosPage() {
       {isCreateEditOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between p-5 border-b border-[#c3c6d7]/30 bg-[#faf8ff]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#c3c6d7]/30 bg-[#faf8ff]">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-[#004ac6]/10 text-[#004ac6] flex items-center justify-center font-bold">
                   <Video className="h-5 w-5" />
@@ -1269,7 +1286,7 @@ export default function VideosPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitForm} className="p-6 space-y-4">
+            <form onSubmit={handleSubmitForm} className="p-4 space-y-3.5">
               {/* Title (Required) */}
               <div>
                 <label className="block text-xs font-bold text-[#131b2e] mb-1">
@@ -1405,7 +1422,7 @@ export default function VideosPage() {
       {isDeleteOpen && videoToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
-            <div className="p-6 text-center space-y-4">
+            <div className="p-4 md:p-5 text-center space-y-3.5">
               <div className="h-12 w-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
                 <AlertTriangle className="h-6 w-6" />
               </div>
@@ -1444,7 +1461,7 @@ export default function VideosPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl border border-[#c3c6d7]/40 shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-[#c3c6d7]/30 flex items-center justify-between bg-[#faf8ff]">
+            <div className="px-4 py-3 border-b border-[#c3c6d7]/30 flex items-center justify-between bg-[#faf8ff]">
               <div className="flex items-center gap-2.5">
                 <div className="h-9 w-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
                   <QrCode className="h-5 w-5" />
@@ -1465,12 +1482,12 @@ export default function VideosPage() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6">
+            <div className="p-4">
               {selectedVideoQr.qr ? (
                 /* QR EXISTS: Show Preview & Download Options */
-                <div className="space-y-5">
+                <div className="space-y-4">
                   {/* QR Image & Code Display */}
-                  <div className="flex flex-col items-center justify-center p-6 bg-[#f4f7ff]/70 rounded-2xl border border-[#004ac6]/15 text-center">
+                  <div className="flex flex-col items-center justify-center p-4 bg-[#f4f7ff]/70 rounded-2xl border border-[#004ac6]/15 text-center">
                     <div className="bg-white p-3 rounded-2xl shadow-sm border border-[#c3c6d7]/40 mb-3">
                       <img
                         src={qrApi.getImageUrl(selectedVideoQr.qr.id, "png")}

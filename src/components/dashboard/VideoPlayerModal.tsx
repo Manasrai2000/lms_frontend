@@ -53,10 +53,10 @@ export default function VideoPlayerModal({
   const embedUrl = getEmbedUrl();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 animate-in fade-in duration-200">
       <div className="relative w-full max-w-4xl bg-[#131b2e] rounded-3xl shadow-2xl border border-zinc-700/60 overflow-hidden flex flex-col text-white max-h-[95vh] animate-in zoom-in-95 duration-200">
         {/* Top Header Bar */}
-        <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/80">
+        <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/80">
           <div className="flex items-center gap-3">
             <span className="h-9 w-9 rounded-xl bg-rose-600/20 text-rose-400 flex items-center justify-center font-bold">
               <Video className="h-5 w-5" />
@@ -109,7 +109,7 @@ export default function VideoPlayerModal({
         </div>
 
         {/* Video Details & Book Meta */}
-        <div className="p-6 bg-zinc-900/90 overflow-y-auto space-y-4 max-h-56 custom-scrollbar border-t border-zinc-800">
+        <div className="p-4 bg-zinc-900/90 overflow-y-auto space-y-3.5 max-h-56 custom-scrollbar border-t border-zinc-800">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-1">
               <h3 className="text-base font-bold text-white leading-tight">
